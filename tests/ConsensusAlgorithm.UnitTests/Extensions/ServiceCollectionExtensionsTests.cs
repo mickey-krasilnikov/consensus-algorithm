@@ -5,6 +5,7 @@ using NUnit.Framework;
 
 namespace ConsensusAlgorithm.UnitTests.Extensions
 {
+    [TestFixture]
     public class ServiceCollectionExtensionsTests
     {
         [Test]

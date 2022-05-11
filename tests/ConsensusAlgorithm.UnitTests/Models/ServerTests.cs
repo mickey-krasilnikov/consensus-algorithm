@@ -3,6 +3,7 @@ using NUnit.Framework;
 
 namespace ConsensusAlgorithm.UnitTests.Models
 {
+    [TestFixture]
     public class ServerTests
     {
         [TestCaseSource(nameof(ServerTestCases))]

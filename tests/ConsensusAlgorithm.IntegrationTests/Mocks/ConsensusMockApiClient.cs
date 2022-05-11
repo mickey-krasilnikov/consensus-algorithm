@@ -1,5 +1,5 @@
 using ConsensusAlgorithm.Core.ApiClient;
-using ConsensusAlgorithm.Core.Services;
+using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.DTO.RequestVote;
 using System.Threading.Tasks;

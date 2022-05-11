@@ -8,6 +8,7 @@ using System.Linq;
 
 namespace ConsensusAlgorithm.UnitTests.Mappers
 {
+    [TestFixture]
     public class LogEntryMapperTests
     {
         [TestCaseSource(nameof(ToLogEntryTestCases))]

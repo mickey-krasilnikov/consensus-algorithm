@@ -3,6 +3,7 @@ using NUnit.Framework;
 
 namespace ConsensusAlgorithm.UnitTests.StateMachineTest
 {
+    [TestFixture]
     public class StateMachineTest
     {
         [Test]

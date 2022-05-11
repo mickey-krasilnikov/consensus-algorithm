@@ -1,11 +1,11 @@
-﻿using ConsensusAlgorithm.Core.Services;
+﻿using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.DTO.RequestVote;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConsensusAlgorithm.WebAPI.Controllers
 {
-	[ApiController]
+    [ApiController]
 	[Consumes("application/json")]
 	[Produces("application/json")]
 	[Route("api/consensus")]

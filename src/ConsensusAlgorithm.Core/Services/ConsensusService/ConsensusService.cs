@@ -7,18 +7,17 @@ using ConsensusAlgorithm.Core.ApiClient;
 using ConsensusAlgorithm.Core.Configuration;
 using ConsensusAlgorithm.Core.Mappers;
 using ConsensusAlgorithm.Core.StateMachine;
+using ConsensusAlgorithm.Core.Services.TimeoutService;
 
-namespace ConsensusAlgorithm.Core.Services
+namespace ConsensusAlgorithm.Core.Services.ConsensusService
 {
     public class ConsensusService : IConsensusService
     {
-        private const int _electionTimeoutMin = 1000;
-        private const int _electionTimeoutMax = 5000;
-
         private readonly IConsensusRepository _repo;
         private readonly IStateMachine _stateMachine;
         private readonly ILogger<ConsensusService> _logger;
         private readonly IList<IConsensusApiClient> _otherServers;
+        private readonly ITimeoutService _timeout;
         private IConsensusApiClient _leaderServer = null!;
         private readonly Server _currentServer;
 
@@ -31,12 +30,14 @@ namespace ConsensusAlgorithm.Core.Services
             IStateMachine stateMachine,
             ILogger<ConsensusService> logger,
             IList<IConsensusApiClient> otherServers,
+            ITimeoutService timeoutProvider,
             ConsensusClusterConfig config)
         {
             _repo = repo;
             _stateMachine = stateMachine;
             _logger = logger;
             _otherServers = otherServers;
+            _timeout = timeoutProvider;
             _currentServer = new Server(config.CurrentServerId);
         }
 
@@ -44,11 +45,9 @@ namespace ConsensusAlgorithm.Core.Services
         {
             var currentTerm = _repo.GetCurrentTerm();
             if (_currentServer.State != ServerState.Leader)
-            {
                 return _leaderServer != null
                     ? await _leaderServer.AppendEntriesExternalAsync(appendRequest)
                     : new AppendEntriesExternalResponse { Success = false, Term = currentTerm };
-            }
             else
             {
                 var prevLog = _currentServer.Logs.LastOrDefault();
@@ -92,9 +91,7 @@ namespace ConsensusAlgorithm.Core.Services
             var currentTerm = _repo.GetCurrentTerm();
 
             if (appendRequest.Term < currentTerm)
-            {
                 return new AppendEntriesResponse { Success = false, Term = currentTerm };
-            }
 
             if (appendRequest.Term > currentTerm)
             {
@@ -111,18 +108,13 @@ namespace ConsensusAlgorithm.Core.Services
             var prevLog = _currentServer.Logs.LastOrDefault();
             var prevLogTerm = prevLog != null ? prevLog.Term : -1;
             if (prevLogTerm != appendRequest.PrevLogTerm)
-            {
                 return new AppendEntriesResponse { Success = false, Term = currentTerm };
-            }
 
             var isConflict = false;
             var toAppend = new List<LogEntry>();
             foreach (var entry in appendRequest.Entries.OrderBy(l => l.Index))
-            {
                 if (isConflict)
-                {
                     toAppend.Add(entry);
-                }
                 else
                 {
                     var existingEntry = _currentServer.Logs.ElementAtOrDefault(entry.Index);
@@ -137,7 +129,6 @@ namespace ConsensusAlgorithm.Core.Services
                         break;
                     }
                 }
-            }
 
             foreach (var entry in toAppend.OrderBy(e => e.Index))
             {
@@ -224,7 +215,7 @@ namespace ConsensusAlgorithm.Core.Services
             _logger.LogInformation("Consensus Server running.");
 
             _currentServer.Logs = _repo.GetLogEntries().ToLogEntries();
-            _electionTimeout = new Random().Next(_electionTimeoutMin, _electionTimeoutMax);
+            _electionTimeout = _timeout.GetRandomTimeout();
             _electionTimer = new Timer(RunElection, null, _electionTimeout, Timeout.Infinite);
             _heartbeatTimer = new Timer(SendHeartbeat, null, Timeout.Infinite, 0);
             return Task.CompletedTask;
@@ -273,9 +264,7 @@ namespace ConsensusAlgorithm.Core.Services
                         _repo.SetCurrentTerm(response.Term);
                     }
                     if (response.VoteGranted)
-                    {
                         Interlocked.Increment(ref votes);
-                    }
                 }
             });
 
@@ -314,7 +303,7 @@ namespace ConsensusAlgorithm.Core.Services
                     _heartbeatTimer?.Change(Timeout.Infinite, 0);
 
                     // reset timeout
-                    _electionTimeout = new Random().Next(_electionTimeoutMin, _electionTimeoutMax);
+                    _electionTimeout = _timeout.GetRandomTimeout();
 
                     // start election timer
                     _electionTimer?.Change(Timeout.Infinite, 0);
