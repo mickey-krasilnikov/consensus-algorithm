@@ -66,6 +66,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 {
                     _currentServer.Logs.Append(entry);
                     _repo.AppendLogEntry(entry.ToLogEntity());
+                    _stateMachine.Apply(entry.Command);
                 }
 
                 var serversAppendedEntries = 1;
@@ -77,7 +78,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                         Term = currentTerm,
                         PrevLogIndex = prevLogIndex,
                         PrevLogTerm = prevLogTerm,
-                        //CommitIndex = ??,
+                        CommitIndex = prevLogIndex,
                         Entries = entriesToAppend
                     });
                     if (response.Success) Interlocked.Increment(ref serversAppendedEntries);
@@ -134,10 +135,8 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             {
                 _currentServer.Logs.Append(entry);
                 _repo.AppendLogEntry(entry.ToLogEntity());
+                _stateMachine.Apply(entry.Command);
             }
-
-            // advance state machine with newly commited entries
-            //_stateMachine.Apply();
 
             return new AppendEntriesResponse { Success = true, Term = currentTerm };
         }
