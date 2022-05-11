@@ -1,0 +1,161 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ConsensusAlgorithm.WebAPI",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/consensus/makeRequest": {
+      "post": {
+        "tags": [
+          "Consensus"
+        ],
+        "parameters": [
+          {
+            "name": "command",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/consensus/requestVote": {
+      "post": {
+        "tags": [
+          "Consensus"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/consensus/appendEntries": {
+      "post": {
+        "tags": [
+          "Consensus"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendEntriesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/consensus/healthz": {
+      "get": {
+        "tags": [
+          "Consensus"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AppendEntriesRequest": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leaderId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "previousLogIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "previousLogTerm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leaderCommit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LogEntry"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LogEntry": {
+        "type": "object",
+        "properties": {
+          "termNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "command": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VoteRequest": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "candidateId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastLogIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastLogTerm": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

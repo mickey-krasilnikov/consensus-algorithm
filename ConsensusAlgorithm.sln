@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32414.318
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsensusAlgorithm.WebAPI", "src\ConsensusAlgorithm.WebAPI\ConsensusAlgorithm.WebAPI.csproj", "{11176428-76B8-4498-AE6F-75C2B62206C9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{B4E59C96-BDBD-4B6A-B13E-B4C8DC1FCEF7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsensusAlgorithm.Core", "src\ConsensusAlgorithm.Core\ConsensusAlgorithm.Core.csproj", "{4D7899A4-A99F-48EC-8796-8214D3B54AC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsensusAlgorithm.UnitTests", "tests\ConsensusAlgorithm.UnitTests\ConsensusAlgorithm.UnitTests.csproj", "{A9B25F43-1283-47C6-AFDC-3E9F9C878914}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsensusAlgorithm.DTO", "src\ConsensusAlgorithm.DTO\ConsensusAlgorithm.DTO.csproj", "{85FA516F-37D9-49FD-927B-696A2FB124A2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsensusAlgorithm.DataAccess", "src\ConsensusAlgorithm.DataAccess\ConsensusAlgorithm.DataAccess.csproj", "{789ED813-380E-40E0-86BC-311C6497AACE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{28922938-00D7-4245-BAD3-9C975E214864}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{11176428-76B8-4498-AE6F-75C2B62206C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11176428-76B8-4498-AE6F-75C2B62206C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11176428-76B8-4498-AE6F-75C2B62206C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11176428-76B8-4498-AE6F-75C2B62206C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D7899A4-A99F-48EC-8796-8214D3B54AC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D7899A4-A99F-48EC-8796-8214D3B54AC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D7899A4-A99F-48EC-8796-8214D3B54AC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D7899A4-A99F-48EC-8796-8214D3B54AC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9B25F43-1283-47C6-AFDC-3E9F9C878914}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9B25F43-1283-47C6-AFDC-3E9F9C878914}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9B25F43-1283-47C6-AFDC-3E9F9C878914}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9B25F43-1283-47C6-AFDC-3E9F9C878914}.Release|Any CPU.Build.0 = Release|Any CPU
+		{85FA516F-37D9-49FD-927B-696A2FB124A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{85FA516F-37D9-49FD-927B-696A2FB124A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{85FA516F-37D9-49FD-927B-696A2FB124A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{85FA516F-37D9-49FD-927B-696A2FB124A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{789ED813-380E-40E0-86BC-311C6497AACE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{789ED813-380E-40E0-86BC-311C6497AACE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{789ED813-380E-40E0-86BC-311C6497AACE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{789ED813-380E-40E0-86BC-311C6497AACE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A9B25F43-1283-47C6-AFDC-3E9F9C878914} = {B4E59C96-BDBD-4B6A-B13E-B4C8DC1FCEF7}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B9FFAD15-62D8-4345-90C5-00AD9D0E4B9C}
+	EndGlobalSection
+EndGlobal
