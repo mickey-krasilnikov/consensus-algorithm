@@ -11,6 +11,7 @@ using ConsensusAlgorithm.DataAccess.Entities;
 using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.Core.Services.TimeoutService;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
+using ConsensusAlgorithm.DTO.AppendEntriesExternal;
 
 namespace ConsensusAlgorithm.UnitTests.Services
 {
