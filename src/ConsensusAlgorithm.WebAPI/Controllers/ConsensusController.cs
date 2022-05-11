@@ -20,16 +20,16 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 			_consensusService = consensusService;
 		}
 
-		/// <summary>
-		/// Invoked by candidates to gather votes
-		/// </summary>
-		/// <param name="request">Request Vote Request</param>
-		/// <returns>Request Vote Response</returns>
-		[HttpPost("requestVote")]
-		public ActionResult<RequestVoteResponse> RequestVoteInternal(RequestVoteRequest request)
+        /// <summary>
+        /// Endpoint to send commands to the leader from outside of the consensus cluster
+        /// </summary>
+        /// <param name="request">Request contains the list of commands</param>
+        /// <returns></returns>
+		[HttpPost("appendEntriesExternal")]
+		public async Task<ActionResult<AppendEntriesExternalResponse>> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)
 		{
-			var response = _consensusService.RequestVoteInternal(request);
-			return Ok(response);
+			var response = await _consensusService.AppendEntriesExternalAsync(request);
+			return response.Success ? Ok(response) : BadRequest(response);
 		}
 
 		/// <summary>
@@ -45,11 +45,16 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 			return response.Success ? Ok(response) : BadRequest(response);
 		}
 
-		[HttpPost("appendEntriesExternal")]
-		public async Task<ActionResult<AppendEntriesExternalResponse>> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)
+		/// <summary>
+		/// Invoked by candidates to gather votes
+		/// </summary>
+		/// <param name="request">Request Vote Request</param>
+		/// <returns>Request Vote Response</returns>
+		[HttpPost("requestVote")]
+		public ActionResult<RequestVoteResponse> RequestVoteInternal(RequestVoteRequest request)
 		{
-			var response = await _consensusService.AppendEntriesExternalAsync(request);
-			return response.Success ? Ok(response) : BadRequest(response);
+			var response = _consensusService.RequestVoteInternal(request);
+			return Ok(response);
 		}
 
 		/// <summary>

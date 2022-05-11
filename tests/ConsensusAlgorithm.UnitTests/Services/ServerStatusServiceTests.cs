@@ -1,15 +1,15 @@
-﻿using ConsensusAlgorithm.Core.Models;
+﻿using ConsensusAlgorithm.Core.Services.ServerStateService;
 using NUnit.Framework;
 
 namespace ConsensusAlgorithm.UnitTests.Models
 {
     [TestFixture]
-    public class ServerTests
+    public class ServerStatusServiceTests
     {
         [TestCaseSource(nameof(ServerTestCases))]
         public void ServerTest(string id)
         {
-            Assert.DoesNotThrow(() => new Server(id));
+            Assert.DoesNotThrow(() => new ServerStatusService(id));
         }
 
         public readonly static object[] ServerTestCases =

@@ -11,6 +11,8 @@ using System.Threading;
 using ConsensusAlgorithm.DataAccess.Entities;
 using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.Core.Services.TimeoutService;
+using ConsensusAlgorithm.DTO.AppendEntries;
+using ConsensusAlgorithm.Core.Services.ServerStateService;
 
 namespace ConsensusAlgorithm.UnitTests
 {
@@ -26,7 +28,8 @@ namespace ConsensusAlgorithm.UnitTests
         private Mock<IConsensusApiClient> _otherServer2 = null!;
         private Mock<IConsensusApiClient> _otherServer3 = null!;
         private ConsensusClusterConfig _config = null!;
-        private Mock<ITimeoutService> _timeout = null!;
+        private Mock<ITimeoutService> _timeoutMock = null!;
+        private Mock<IServerStatusService> _statusMock = null!;
         private IConsensusService _service = null!;
         private IList<IConsensusApiClient> _otherServers = null!;
 
@@ -55,15 +58,16 @@ namespace ConsensusAlgorithm.UnitTests
                     { _otherServer3.Name, "mockUrl3" },
                 }
             };
-            _timeout = new Mock<ITimeoutService>();
+            _timeoutMock = new Mock<ITimeoutService>();
+            _statusMock = new Mock<IServerStatusService>();
             _service = new ConsensusService
             (
                 _repoMock.Object,
                 _stateMachineMock.Object,
                 _loggerMock.Object,
                 _otherServers,
-                _timeout.Object,
-                _config
+                _timeoutMock.Object,
+                _statusMock.Object
             );
         }
 
@@ -71,7 +75,7 @@ namespace ConsensusAlgorithm.UnitTests
         public void StartTest()
         {
             _repoMock.Setup(r => r.GetLogEntries()).Returns(new List<LogEntity>());
-            _timeout.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
+            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             Assert.DoesNotThrowAsync(() => _service.StartAsync(_cts.Token));
             _cts.Cancel();
         }
@@ -84,6 +88,10 @@ namespace ConsensusAlgorithm.UnitTests
 
         public void AppendEntriesExternalTest()
         {
+            _service.AppendEntriesExternalAsync(new AppendEntriesExternalRequest
+            {
+                Commands = new List<string> { "CLEAR X X", "SET X X" }
+            });
         }
 
         public void AppendEntriesInternalTest()

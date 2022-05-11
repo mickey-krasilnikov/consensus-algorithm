@@ -1,10 +1,5 @@
 ﻿namespace ConsensusAlgorithm.Core.Services.TimeoutService
 {
-    public interface ITimeoutService
-    {
-        int GetRandomTimeout();
-    }
-
     public class TimeoutService : ITimeoutService
     {
         private const int _electionTimeoutMin = 1000;
