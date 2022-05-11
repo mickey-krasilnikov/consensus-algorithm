@@ -2,14 +2,30 @@
 {
     public class ServerStatusService : IServerStatusService
     {
+        private ServerStatus _state;
+
         public string Id { get; }
 
-        public ServerState State { get; set; }
+        public string? LeaderId { get; set; }
+
+        public bool HasLeader { get => LeaderId != null; }
+
+        public bool IsLeader { get => State == ServerStatus.Leader; }
+
+        public ServerStatus State
+        {
+            get => _state;
+            set
+            {
+                _state = value;
+                if (_state == ServerStatus.Leader) LeaderId = Id;
+            }
+        }
 
         public ServerStatusService(string id)
         {
             Id = id;
-            State = ServerState.Follower;
+            State = ServerStatus.Follower;
         }
     }
 }

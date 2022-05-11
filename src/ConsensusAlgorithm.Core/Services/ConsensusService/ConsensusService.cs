@@ -22,7 +22,6 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         private readonly IServerStatusService _status;
 
         private IList<LogEntry> _logs = new List<LogEntry>();
-        private IConsensusApiClient _leaderServer = null!;
         private Timer _electionTimer = null!;
         private Timer _heartbeatTimer = null!;
         private int _electionTimeout;
@@ -46,9 +45,9 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         public async Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest appendRequest)
         {
             var currentTerm = _repo.GetCurrentTerm();
-            if (_status.State != ServerState.Leader)
-                return _leaderServer != null
-                    ? await _leaderServer.AppendEntriesExternalAsync(appendRequest)
+            if (!_status.IsLeader)
+                return _status.HasLeader
+                    ? await _otherServers.First(s => s.Id == _status.LeaderId).AppendEntriesExternalAsync(appendRequest)
                     : new AppendEntriesExternalResponse { Success = false, Term = currentTerm };
             else
             {
@@ -103,7 +102,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             }
 
             // stepdown
-            _status.State = ServerState.Follower;
+            _status.State = ServerStatus.Follower;
 
             // reset election timeout
             _electionTimer?.Change(_electionTimeout, Timeout.Infinite);
@@ -150,7 +149,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             if (voteRequest.Term > _repo.GetCurrentTerm())
             {
                 // step down
-                _status.State = ServerState.Follower;
+                _status.State = ServerStatus.Follower;
                 _repo.SetCurrentTerm(voteRequest.Term);
             }
 
@@ -168,19 +167,9 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 // reset election timeout
                 _electionTimer?.Change(_electionTimeout, Timeout.Infinite);
                 _repo.SetCandidateIdVotedFor(voteRequest.CandidateId, voteRequest.Term);
-                _leaderServer = _otherServers.Single(s => s.Id == voteRequest.CandidateId);
-                return new RequestVoteResponse
-                {
-                    VoteGranted = true,
-                    Term = currentTerm
-                };
+                return new RequestVoteResponse { VoteGranted = true, Term = currentTerm };
             }
-
-            return new RequestVoteResponse
-            {
-                VoteGranted = false,
-                Term = currentTerm
-            };
+            return new RequestVoteResponse { VoteGranted = false, Term = currentTerm };
         }
 
         public HeartbeatResponse Heartbeat(HeartbeatRequest heartbeat)
@@ -193,15 +182,12 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             // received from new leader -> stepdown
             if (heartbeat.Term > currentTerm)
             {
-                _status.State = ServerState.Follower;
+                _status.State = ServerStatus.Follower;
                 _repo.SetCurrentTerm(heartbeat.Term);
                 currentTerm = heartbeat.Term;
             }
-            if (_leaderServer == null || _leaderServer.Id != heartbeat.LeaderId)
-            {
-                var newLeader = _otherServers.FirstOrDefault(s => s.Id == heartbeat.LeaderId);
-                if (newLeader != null) _leaderServer = newLeader;
-            }
+
+            _status.LeaderId = heartbeat.LeaderId;
 
             // reset election timeout
             _electionTimer?.Change(_electionTimeout, Timeout.Infinite);
@@ -225,7 +211,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         private void RunElection(object? state)
         {
             // Follower -> Candidate
-            _status.State = ServerState.Candidate;
+            _status.State = ServerStatus.Candidate;
 
             var currentTerm = _repo.GetCurrentTerm();
 
@@ -261,17 +247,16 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                     if (response.Term > currentTerm)
                     {
                         // step down
-                        _status.State = ServerState.Follower;
+                        _status.State = ServerStatus.Follower;
                         _repo.SetCurrentTerm(response.Term);
                     }
-                    if (response.VoteGranted)
-                        Interlocked.Increment(ref votes);
+                    if (response.VoteGranted) Interlocked.Increment(ref votes);
                 }
             });
 
-            if (_status.State == ServerState.Candidate && votes >= Math.Ceiling(decimal.Divide(serversAlive, 2)))
+            if (_status.State == ServerStatus.Candidate && votes >= Math.Ceiling(decimal.Divide(serversAlive, 2)))
             {
-                _status.State = ServerState.Leader;
+                _status.State = ServerStatus.Leader;
 
                 // stop election timer
                 _electionTimer?.Change(Timeout.Infinite, 0);
@@ -297,7 +282,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 if (response.Success && response.Term > currentTerm)
                 {
                     // step down
-                    _status.State = ServerState.Follower;
+                    _status.State = ServerStatus.Follower;
                     _repo.SetCurrentTerm(response.Term);
 
                     // stop heartbeat timer

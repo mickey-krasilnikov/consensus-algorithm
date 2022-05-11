@@ -1,6 +1,6 @@
 ﻿namespace ConsensusAlgorithm.Core.Services.ServerStatusService
 {
-    public enum ServerState
+    public enum ServerStatus
     {
         Follower,
         Candidate,
