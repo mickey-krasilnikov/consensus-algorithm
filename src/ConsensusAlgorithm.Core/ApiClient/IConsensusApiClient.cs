@@ -1,9 +1,11 @@
 using ConsensusAlgorithm.DTO.AppendEntries;
+using ConsensusAlgorithm.DTO.AppendEntriesExternal;
+using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.DTO.RequestVote;
 
 namespace ConsensusAlgorithm.Core.ApiClient
 {
-	public interface IConsensusApiClient
+    public interface IConsensusApiClient
 	{
 		string Id { get; }
 

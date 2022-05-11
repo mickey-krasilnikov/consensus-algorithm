@@ -1,7 +1,7 @@
 using ConsensusAlgorithm.Core.StateMachine;
 using NUnit.Framework;
 
-namespace ConsensusAlgorithm.UnitTests.StateMachineTest
+namespace ConsensusAlgorithm.UnitTests.StateMachine
 {
     [TestFixture]
     public class StateMachineTest

@@ -1,6 +1,4 @@
-﻿using ConsensusAlgorithm.Core.Services.ServerStatusService;
-
-namespace ConsensusAlgorithm.Core.Services.ServerStateService
+﻿namespace ConsensusAlgorithm.Core.Services.ServerStatusService
 {
     public class ServerStatusService : IServerStatusService
     {

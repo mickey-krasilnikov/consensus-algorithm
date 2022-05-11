@@ -1,4 +1,3 @@
-using ConsensusAlgorithm.UnitTests.Util;
 using NUnit.Framework;
 using ConsensusAlgorithm.DataAccess;
 using Moq;
@@ -12,9 +11,9 @@ using ConsensusAlgorithm.DataAccess.Entities;
 using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.Core.Services.TimeoutService;
 using ConsensusAlgorithm.DTO.AppendEntries;
-using ConsensusAlgorithm.Core.Services.ServerStateService;
+using ConsensusAlgorithm.Core.Services.ServerStatusService;
 
-namespace ConsensusAlgorithm.UnitTests
+namespace ConsensusAlgorithm.UnitTests.Services
 {
     [TestFixture]
     public class ConsensusServiceTests : TestBase

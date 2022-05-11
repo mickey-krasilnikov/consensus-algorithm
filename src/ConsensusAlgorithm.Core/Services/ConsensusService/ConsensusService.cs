@@ -6,8 +6,9 @@ using ConsensusAlgorithm.Core.ApiClient;
 using ConsensusAlgorithm.Core.Mappers;
 using ConsensusAlgorithm.Core.StateMachine;
 using ConsensusAlgorithm.Core.Services.TimeoutService;
-using ConsensusAlgorithm.Core.Services.ServerStateService;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
+using ConsensusAlgorithm.DTO.Heartbeat;
+using ConsensusAlgorithm.DTO.AppendEntriesExternal;
 
 namespace ConsensusAlgorithm.Core.Services.ConsensusService
 {

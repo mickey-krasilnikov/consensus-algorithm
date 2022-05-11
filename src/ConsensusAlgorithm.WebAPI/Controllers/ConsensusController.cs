@@ -1,5 +1,7 @@
 ﻿using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.DTO.AppendEntries;
+using ConsensusAlgorithm.DTO.AppendEntriesExternal;
+using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.DTO.RequestVote;
 using Microsoft.AspNetCore.Mvc;
 

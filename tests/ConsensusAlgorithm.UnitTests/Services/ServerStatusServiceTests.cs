@@ -1,7 +1,7 @@
 ﻿using ConsensusAlgorithm.Core.Services.ServerStateService;
 using NUnit.Framework;
 
-namespace ConsensusAlgorithm.UnitTests.Models
+namespace ConsensusAlgorithm.UnitTests.Services
 {
     [TestFixture]
     public class ServerStatusServiceTests

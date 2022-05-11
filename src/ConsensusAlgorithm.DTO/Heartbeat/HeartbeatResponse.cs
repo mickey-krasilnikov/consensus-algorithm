@@ -1,15 +1,15 @@
-﻿namespace ConsensusAlgorithm.DTO.AppendEntries
+﻿namespace ConsensusAlgorithm.DTO.Heartbeat
 {
-	public class HeartbeatResponse
-	{
-		/// <summary>
-		/// Current term, for leader to update itself
-		/// </summary>
-		public int Term { get; set; }
+    public class HeartbeatResponse
+    {
+        /// <summary>
+        /// Current term, for leader to update itself
+        /// </summary>
+        public int Term { get; set; }
 
-		/// <summary>
-		/// Indicator if follower updated timer
-		/// </summary>
-		public bool Success { get; set; }
-	}
+        /// <summary>
+        /// Indicator if follower updated timer
+        /// </summary>
+        public bool Success { get; set; }
+    }
 }

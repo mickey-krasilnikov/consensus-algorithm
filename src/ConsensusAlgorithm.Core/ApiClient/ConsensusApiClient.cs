@@ -1,4 +1,6 @@
 using ConsensusAlgorithm.DTO.AppendEntries;
+using ConsensusAlgorithm.DTO.AppendEntriesExternal;
+using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.DTO.RequestVote;
 using System.Text;
 using System.Text.Json;

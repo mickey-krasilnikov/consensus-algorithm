@@ -2,7 +2,7 @@
 using FluentAssertions;
 using NUnit.Framework;
 
-namespace ConsensusAlgorithm.UnitTests.Providers
+namespace ConsensusAlgorithm.UnitTests.Services
 {
     [TestFixture]
     public class TimeoutServiceTests
