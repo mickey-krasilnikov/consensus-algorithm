@@ -1,5 +1,4 @@
-﻿using ConsensusAlgorithm.Core.Services.ServerStateService;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 
 namespace ConsensusAlgorithm.UnitTests.Services
 {

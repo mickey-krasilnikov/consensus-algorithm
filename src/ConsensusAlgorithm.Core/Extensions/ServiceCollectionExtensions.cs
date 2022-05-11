@@ -6,7 +6,6 @@ using ConsensusAlgorithm.DataAccess;
 using ConsensusAlgorithm.Core.ApiClient;
 using ConsensusAlgorithm.Core.Services.TimeoutService;
 using ConsensusAlgorithm.Core.Services.ConsensusService;
-using ConsensusAlgorithm.Core.Services.ServerStateService;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
 
 namespace ConsensusAlgorithm.Core.Extensions

@@ -10,7 +10,6 @@ using System.Threading;
 using ConsensusAlgorithm.DataAccess.Entities;
 using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.Core.Services.TimeoutService;
-using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
 
 namespace ConsensusAlgorithm.UnitTests.Services
