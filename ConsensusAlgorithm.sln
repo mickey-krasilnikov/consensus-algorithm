@@ -9,16 +9,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{B4E59C96
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsensusAlgorithm.Core", "src\ConsensusAlgorithm.Core\ConsensusAlgorithm.Core.csproj", "{4D7899A4-A99F-48EC-8796-8214D3B54AC1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsensusAlgorithm.UnitTests", "tests\ConsensusAlgorithm.UnitTests\ConsensusAlgorithm.UnitTests.csproj", "{A9B25F43-1283-47C6-AFDC-3E9F9C878914}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsensusAlgorithm.UnitTests", "tests\ConsensusAlgorithm.UnitTests\ConsensusAlgorithm.UnitTests.csproj", "{A9B25F43-1283-47C6-AFDC-3E9F9C878914}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsensusAlgorithm.DTO", "src\ConsensusAlgorithm.DTO\ConsensusAlgorithm.DTO.csproj", "{85FA516F-37D9-49FD-927B-696A2FB124A2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsensusAlgorithm.DTO", "src\ConsensusAlgorithm.DTO\ConsensusAlgorithm.DTO.csproj", "{85FA516F-37D9-49FD-927B-696A2FB124A2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsensusAlgorithm.DataAccess", "src\ConsensusAlgorithm.DataAccess\ConsensusAlgorithm.DataAccess.csproj", "{789ED813-380E-40E0-86BC-311C6497AACE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsensusAlgorithm.DataAccess", "src\ConsensusAlgorithm.DataAccess\ConsensusAlgorithm.DataAccess.csproj", "{789ED813-380E-40E0-86BC-311C6497AACE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{28922938-00D7-4245-BAD3-9C975E214864}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsensusAlgorithm.IntegrationTests", "tests\ConsensusAlgorithm.IntegrationTests\ConsensusAlgorithm.IntegrationTests.csproj", "{791E9C01-93A9-4D84-8BCC-86F11F0D080C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,12 +48,17 @@ Global
 		{789ED813-380E-40E0-86BC-311C6497AACE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{789ED813-380E-40E0-86BC-311C6497AACE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{789ED813-380E-40E0-86BC-311C6497AACE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{791E9C01-93A9-4D84-8BCC-86F11F0D080C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{791E9C01-93A9-4D84-8BCC-86F11F0D080C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{791E9C01-93A9-4D84-8BCC-86F11F0D080C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{791E9C01-93A9-4D84-8BCC-86F11F0D080C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A9B25F43-1283-47C6-AFDC-3E9F9C878914} = {B4E59C96-BDBD-4B6A-B13E-B4C8DC1FCEF7}
+		{791E9C01-93A9-4D84-8BCC-86F11F0D080C} = {B4E59C96-BDBD-4B6A-B13E-B4C8DC1FCEF7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B9FFAD15-62D8-4345-90C5-00AD9D0E4B9C}
