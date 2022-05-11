@@ -18,14 +18,14 @@ namespace ConsensusAlgorithm.UnitTests.Mocks
             _consensusService = consensusService;
         }
 
-        public Task<RequestVoteResponse> RequestVoteInternalAsync(RequestVoteRequest request)
+        public Task<RequestVoteResponse?> RequestVoteInternalAsync(RequestVoteRequest request)
         {
-            return Task.FromResult(_consensusService.RequestVoteInternal(request));
+            return Task.FromResult(_consensusService.RequestVoteInternal(request))!;
         }
 
         public Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest request)
         {
-            return _consensusService.AppendEntriesInternalAsync(request);
+            return Task.FromResult(_consensusService.AppendEntriesInternal(request));
         }
 
         public Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)

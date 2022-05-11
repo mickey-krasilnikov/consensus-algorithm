@@ -6,6 +6,6 @@
 
 		public int Index { get; set; }
 
-		public string? Command { get; set; }
-	}
+		public string Command { get; set; } = null!;
+    }
 }

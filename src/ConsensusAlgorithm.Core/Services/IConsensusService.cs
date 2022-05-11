@@ -8,7 +8,7 @@ namespace ConsensusAlgorithm.Core.Services
 	{
 		Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest appendRequest);
 
-		Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest appendRequest);
+		AppendEntriesResponse AppendEntriesInternal(AppendEntriesRequest appendRequest);
 
 		RequestVoteResponse RequestVoteInternal(RequestVoteRequest voteRequest);
 

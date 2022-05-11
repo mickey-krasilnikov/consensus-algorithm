@@ -9,7 +9,7 @@ namespace ConsensusAlgorithm.Core.Mappers
 		{
 			return new LogEntry
 			{
-				Command = entity.Command,
+				Command = entity.Command!,
 				Index = entity.Index,
 				Term = entity.Term
 			};

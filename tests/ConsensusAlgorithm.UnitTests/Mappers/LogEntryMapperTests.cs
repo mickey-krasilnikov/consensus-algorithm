@@ -105,6 +105,5 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
                 new LogEntry { Command = "TESTCOMMAND", Index = 0, Term = 0 }
             }
         };
-
     }
 }

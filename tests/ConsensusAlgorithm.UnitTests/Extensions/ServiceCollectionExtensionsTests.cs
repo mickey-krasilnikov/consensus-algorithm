@@ -8,7 +8,7 @@ namespace ConsensusAlgorithm.UnitTests.Extensions
     public class ServiceCollectionExtensionsTests
     {
         [Test]
-        public void ServiceCollectionExtensionsTest() 
+        public void ServiceCollectionExtensionsTest()
         {
             var serviceCollection = new ServiceCollection();
             ConfigurationManager configurationManager = new();

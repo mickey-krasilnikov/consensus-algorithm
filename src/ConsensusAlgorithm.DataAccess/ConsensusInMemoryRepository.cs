@@ -10,8 +10,7 @@ namespace ConsensusAlgorithm.DataAccess
 
         private int _currentTerm;
         private VoteEntity? _vote;
-        private IList<LogEntity> _logs = new List<LogEntity>();
-
+        private readonly IList<LogEntity> _logs = new List<LogEntity>();
 
         public int GetCurrentTerm()
         {

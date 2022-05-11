@@ -10,7 +10,6 @@ using ConsensusAlgorithm.Core.StateMachine;
 
 namespace ConsensusAlgorithm.Core.Services
 {
-
     public class ConsensusService : IConsensusService
     {
         private const int _electionTimeoutMin = 1000;
@@ -88,7 +87,7 @@ namespace ConsensusAlgorithm.Core.Services
             }
         }
 
-        public async Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest appendRequest)
+        public AppendEntriesResponse AppendEntriesInternal(AppendEntriesRequest appendRequest)
         {
             var currentTerm = _repo.GetCurrentTerm();
 
@@ -120,7 +119,10 @@ namespace ConsensusAlgorithm.Core.Services
             var toAppend = new List<LogEntry>();
             foreach (var entry in appendRequest.Entries.OrderBy(l => l.Index))
             {
-                if (isConflict) toAppend.Add(entry);
+                if (isConflict)
+                {
+                    toAppend.Add(entry);
+                }
                 else
                 {
                     var existingEntry = _currentServer.Logs.ElementAtOrDefault(entry.Index);
@@ -146,7 +148,7 @@ namespace ConsensusAlgorithm.Core.Services
             // advance state machine with newly commited entries
             //_stateMachine.Apply();
 
-            throw new NotImplementedException();
+            return new AppendEntriesResponse { Success = true, Term = currentTerm };
         }
 
         public RequestVoteResponse RequestVoteInternal(RequestVoteRequest voteRequest)

@@ -18,6 +18,5 @@ namespace ConsensusAlgorithm.UnitTests.Models
             "2B",
             "21F27B26",
         };
-
     }
 }

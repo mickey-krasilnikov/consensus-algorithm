@@ -39,9 +39,9 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// <param name="request">AppendEntriesRequest</param>
 		/// <returns>AppendEntriesResponse</returns>
 		[HttpPost("appendEntries")]
-		public async Task<ActionResult<AppendEntriesResponse>> AppendEntriesInternalAsync(AppendEntriesRequest request)
+		public ActionResult<AppendEntriesResponse> AppendEntriesInternal(AppendEntriesRequest request)
 		{
-			var response = await _consensusService.AppendEntriesInternalAsync(request);
+			var response = _consensusService.AppendEntriesInternal(request);
 			return response.Success ? Ok(response) : BadRequest(response);
 		}
 
