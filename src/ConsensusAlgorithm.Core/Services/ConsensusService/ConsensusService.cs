@@ -46,9 +46,11 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         {
             var currentTerm = _repo.GetCurrentTerm();
             if (!_status.IsLeader)
+            {
                 return _status.HasLeader
-                    ? await _otherServers.First(s => s.Id == _status.LeaderId).AppendEntriesExternalAsync(appendRequest)
-                    : new AppendEntriesExternalResponse { Success = false, Term = currentTerm };
+                   ? await _otherServers.First(s => s.Id == _status.LeaderId).AppendEntriesExternalAsync(appendRequest)
+                   : new AppendEntriesExternalResponse { Success = false, Term = currentTerm };
+            }
             else
             {
                 var prevLog = _logs.LastOrDefault();
@@ -65,7 +67,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
 
                 foreach (var entry in entriesToAppend)
                 {
-                    _logs.Append(entry);
+                    _logs.Add(entry);
                     _repo.AppendLogEntry(entry.ToLogEntity());
                     _stateMachine.Apply(entry.Command);
                 }
@@ -93,7 +95,9 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             var currentTerm = _repo.GetCurrentTerm();
 
             if (appendRequest.Term < currentTerm)
+            {
                 return new AppendEntriesResponse { Success = false, Term = currentTerm };
+            }
 
             if (appendRequest.Term > currentTerm)
             {
@@ -110,31 +114,36 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             var prevLog = _logs.LastOrDefault();
             var prevLogTerm = prevLog != null ? prevLog.Term : -1;
             if (prevLogTerm != appendRequest.PrevLogTerm)
+            {
                 return new AppendEntriesResponse { Success = false, Term = currentTerm };
+            }
 
             var isConflict = false;
             var toAppend = new List<LogEntry>();
             foreach (var entry in appendRequest.Entries.OrderBy(l => l.Index))
+            {
                 if (isConflict)
+                {
                     toAppend.Add(entry);
+                }
                 else
                 {
                     var existingEntry = _logs.ElementAtOrDefault(entry.Index);
-                    if (existingEntry == null) break;
-                    if (existingEntry.Index != entry.Index ||
+                    if (existingEntry == null ||
+                        existingEntry.Index != entry.Index ||
                         existingEntry.Term != entry.Term ||
                         existingEntry.Command != entry.Command)
                     {
                         isConflict = true;
                         toAppend.Add(entry);
                         _repo.RemoveStartingFrom(entry.Index);
-                        break;
                     }
                 }
+            }
 
             foreach (var entry in toAppend.OrderBy(e => e.Index))
             {
-                _logs.Append(entry);
+                _logs.Add(entry);
                 _repo.AppendLogEntry(entry.ToLogEntity());
                 _stateMachine.Apply(entry.Command);
             }
@@ -207,6 +216,22 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             _heartbeatTimer = new Timer(SendHeartbeat, null, Timeout.Infinite, 0);
             return Task.CompletedTask;
         }
+
+        public Task StopAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("Consensus Server is stopping.");
+            _electionTimer?.Change(Timeout.Infinite, 0);
+            _heartbeatTimer?.Change(Timeout.Infinite, 0);
+            return Task.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            _electionTimer?.Dispose();
+            _heartbeatTimer?.Dispose();
+        }
+
+        #endregion IHostedService implementation
 
         private void RunElection(object? state)
         {
@@ -296,21 +321,5 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 }
             });
         }
-
-        public Task StopAsync(CancellationToken stoppingToken)
-        {
-            _logger.LogInformation("Consensus Server is stopping.");
-            _electionTimer?.Change(Timeout.Infinite, 0);
-            _heartbeatTimer?.Change(Timeout.Infinite, 0);
-            return Task.CompletedTask;
-        }
-
-        public void Dispose()
-        {
-            _electionTimer?.Dispose();
-            _heartbeatTimer?.Dispose();
-        }
-
-        #endregion IHostedService implementation
     }
 }

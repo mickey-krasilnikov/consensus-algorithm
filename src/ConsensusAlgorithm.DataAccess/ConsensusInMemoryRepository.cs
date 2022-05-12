@@ -44,9 +44,11 @@ namespace ConsensusAlgorithm.DataAccess
 
         public void RemoveStartingFrom(int index)
         {
+            var lastLogIndex = _logs.Count - 1;
+            if (lastLogIndex < index) return;
+
             lock (_logsLock)
             {
-                var lastLogIndex = _logs.Count - 1;
                 for (var i = lastLogIndex; i >= index; i--)
                 {
                     _logs.RemoveAt(i);
