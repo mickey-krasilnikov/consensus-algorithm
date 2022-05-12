@@ -20,7 +20,7 @@ namespace ConsensusAlgorithm.IntegrationTests.Mocks
             _consensusService = consensusService;
         }
 
-        public Task<RequestVoteResponse?> RequestVoteInternalAsync(RequestVoteRequest request)
+        public Task<VoteResponse?> RequestVoteInternalAsync(VoteRequest request)
         {
             return Task.FromResult(_consensusService.RequestVoteInternal(request))!;
         }

@@ -1,6 +1,6 @@
 ﻿namespace ConsensusAlgorithm.DTO.RequestVote
 {
-	public class RequestVoteResponse
+	public class VoteResponse
 	{
 		/// <summary>
 		/// Current term, for candidate to update itself

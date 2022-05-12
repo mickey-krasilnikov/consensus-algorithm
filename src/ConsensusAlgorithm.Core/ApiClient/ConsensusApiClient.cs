@@ -25,9 +25,9 @@ namespace ConsensusAlgorithm.Core.ApiClient
             _baseUrl = baseURL;
         }
 
-        public async Task<RequestVoteResponse?> RequestVoteInternalAsync(RequestVoteRequest request)
+        public async Task<VoteResponse?> RequestVoteInternalAsync(VoteRequest request)
         {
-            return await PostRequest<RequestVoteRequest, RequestVoteResponse>(request, RequestVoteUrl);
+            return await PostRequest<VoteRequest, VoteResponse>(request, RequestVoteUrl);
         }
 
         public async Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest request)

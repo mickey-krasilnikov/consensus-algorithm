@@ -9,7 +9,7 @@ namespace ConsensusAlgorithm.Core.ApiClient
 	{
 		string Id { get; }
 
-		Task<RequestVoteResponse?> RequestVoteInternalAsync(RequestVoteRequest request);
+		Task<VoteResponse?> RequestVoteInternalAsync(VoteRequest request);
 
 		Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest request);
 

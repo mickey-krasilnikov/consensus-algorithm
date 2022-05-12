@@ -151,34 +151,37 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             return new AppendEntriesResponse { Success = true, Term = currentTerm };
         }
 
-        public RequestVoteResponse RequestVoteInternal(RequestVoteRequest voteRequest)
+        public VoteResponse RequestVoteInternal(VoteRequest voteRequest)
         {
-            _logger.LogInformation("Server '{CandidateId}' (with term {Term}) requested vote.", voteRequest.CandidateId, voteRequest.Term);
+            var currentTerm = _repo.GetCurrentTerm();
+            
+            if (voteRequest.Term < currentTerm)
+            {
+                return new VoteResponse { VoteGranted = false, Term = currentTerm };
+            }
 
-            if (voteRequest.Term > _repo.GetCurrentTerm())
+            if (voteRequest.Term > currentTerm)
             {
                 // step down
                 _status.State = ServerStatus.Follower;
                 _repo.SetCurrentTerm(voteRequest.Term);
             }
 
-            var currentTerm = _repo.GetCurrentTerm();
             var votedFor = _repo.GetCandidateIdVotedFor(currentTerm);
-            var lastLogListItemIndex = _logs.Count - 1;
-            var lastLogIndex = lastLogListItemIndex >= 0 ? _logs[lastLogListItemIndex].Index : -1;
-            var lastLogTerm = lastLogListItemIndex >= 0 ? _logs[lastLogListItemIndex].Term : default;
+            var lastLog = _logs.LastOrDefault();
+            var lastLogIndex = lastLog != null ? lastLog.Index : -1;
+            var lastLogTerm = lastLog != null ? lastLog.Term : -1;
 
-            if (voteRequest.Term == currentTerm &&
-                votedFor == null &&
+            if (votedFor == null &&
                 voteRequest.LastLogIndex >= lastLogIndex &&
                 voteRequest.LastLogTerm >= lastLogTerm)
             {
                 // reset election timeout
                 _electionTimer?.Change(_electionTimeout, Timeout.Infinite);
                 _repo.SetCandidateIdVotedFor(voteRequest.CandidateId, voteRequest.Term);
-                return new RequestVoteResponse { VoteGranted = true, Term = currentTerm };
+                return new VoteResponse { VoteGranted = true, Term = currentTerm };
             }
-            return new RequestVoteResponse { VoteGranted = false, Term = currentTerm };
+            return new VoteResponse { VoteGranted = false, Term = currentTerm };
         }
 
         public HeartbeatResponse Heartbeat(HeartbeatRequest heartbeat)
@@ -259,7 +262,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 var lastLogIndex = lastLog != null ? lastLog.Index : -1;
                 var lastLogTerm = lastLog != null ? lastLog.Term : -1;
 
-                var response = await s.RequestVoteInternalAsync(new RequestVoteRequest
+                var response = await s.RequestVoteInternalAsync(new VoteRequest
                 {
                     CandidateId = _status.Id,
                     Term = currentTerm,

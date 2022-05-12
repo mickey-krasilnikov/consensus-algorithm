@@ -15,6 +15,7 @@ using ConsensusAlgorithm.DTO.AppendEntriesExternal;
 using System.Threading.Tasks;
 using FluentAssertions;
 using ConsensusAlgorithm.DTO.AppendEntries;
+using ConsensusAlgorithm.DTO.RequestVote;
 
 namespace ConsensusAlgorithm.UnitTests.Services
 {
@@ -220,7 +221,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntriesInternal_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_UpdateState(ServerStatus state)
+        public void AppendEntriesInternal_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
@@ -252,7 +253,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntriesInternal_WhenTermFromRequest_EqualCurrentTerm_DoNotUpdateCurrentTerm_UpdateState(ServerStatus state)
+        public void AppendEntriesInternal_WhenTermFromRequest_EqualCurrentTerm_DoNotUpdateCurrentTerm_StepDown(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
@@ -347,8 +348,166 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _stateMachineMock.Verify(r => r.Apply(It.IsAny<string>()), Times.Exactly(2));
         }
 
-        public void RequestVoteInternalTest()
+        [Test]
+        public void RequestVoteInternal_WhenTermFromRequest_LessThenCurrentTerm_IgnoreVoteRequest()
         {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
+            var request = new VoteRequest
+            {
+                CandidateId = _otherServer1.Object.Id,
+                Term = 1,
+                LastLogIndex = -1,
+                LastLogTerm = -1
+            };
+
+            // Act
+            var response = _service.RequestVoteInternal(request);
+
+            // Assert
+            response.VoteGranted.Should().BeFalse();
+            response.Term.Should().Be(2);
+        }
+
+        [Test]
+        public void RequestVoteInternal_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
+            var request = new VoteRequest
+            {
+                CandidateId = _otherServer1.Object.Id,
+                Term = 2,
+                LastLogIndex = -1,
+                LastLogTerm = -1
+            };
+
+            // Act
+            _service.RequestVoteInternal(request);
+
+            // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
+            _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Once);
+            _repoMock.Verify(s => s.GetCandidateIdVotedFor(It.IsAny<int>()), Times.Once);
+        }
+
+        [Test]
+        public void RequestVoteInternal_WhenServerAlreadyVoted_IgnoreVoteRequest()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
+            _repoMock.Setup(r => r.GetCandidateIdVotedFor(It.IsAny<int>())).Returns(_otherServer1.Object.Id);
+
+            var request = new VoteRequest
+            {
+                CandidateId = _otherServer1.Object.Id,
+                Term = 1,
+                LastLogIndex = -1,
+                LastLogTerm = -1
+            };
+
+            // Act
+            var response = _service.RequestVoteInternal(request);
+
+            // Assert
+            response.VoteGranted.Should().BeFalse();
+            response.Term.Should().Be(1);
+        }
+
+        [Test]
+        public void RequestVoteInternal_WhenLastLogIndexFromRequest_LessThenLocalLastLogIndex_IgnoreVoteRequest()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1); 
+            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
+            var appendLogsRequest = new AppendEntriesRequest
+            {
+                LeaderId = _otherServer1.Object.Id,
+                Term = 1,
+                CommitIndex = -1,
+                PrevLogIndex = -1,
+                PrevLogTerm = -1,
+                Entries = new List<LogEntry>
+                {
+                    new (){ Command = "CLEAR X X", Index = 1, Term = 1 },
+                    new (){ Command = "SET X X", Index = 2, Term = 1 },
+                }
+            };
+            var voteRequest = new VoteRequest
+            {
+                CandidateId = _otherServer1.Object.Id,
+                Term = 1,
+                LastLogIndex = -1,
+                LastLogTerm = -1
+            };
+
+            // Act
+            var appendResponse = _service.AppendEntriesInternal(appendLogsRequest);
+            var voteResponse = _service.RequestVoteInternal(voteRequest);
+
+            // Assert
+            appendResponse.Success.Should().BeTrue();
+            voteResponse.VoteGranted.Should().BeFalse();
+            voteResponse.Term.Should().Be(1);
+        }
+
+        [Test]
+        public void RequestVoteInternal_WhenLastLogTermFromRequest_LessThenLocalLastLogTerm_IgnoreVoteRequest()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
+            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
+            var appendLogsRequest = new AppendEntriesRequest
+            {
+                LeaderId = _otherServer1.Object.Id,
+                Term = 2,
+                CommitIndex = -1,
+                PrevLogIndex = -1,
+                PrevLogTerm = -1,
+                Entries = new List<LogEntry>
+                {
+                    new (){ Command = "CLEAR X X", Index = 1, Term = 2 },
+                    new (){ Command = "SET X X", Index = 2, Term = 2 },
+                }
+            };
+            var voteRequest = new VoteRequest
+            {
+                CandidateId = _otherServer1.Object.Id,
+                Term = 2,
+                LastLogIndex = 2,
+                LastLogTerm = 1
+            };
+
+            // Act
+            var appendResponse = _service.AppendEntriesInternal(appendLogsRequest);
+            var voteResponse = _service.RequestVoteInternal(voteRequest);
+
+            // Assert
+            appendResponse.Success.Should().BeTrue();
+            voteResponse.VoteGranted.Should().BeFalse();
+            voteResponse.Term.Should().Be(2);
+        }
+
+
+        [Test]
+        public void RequestVoteInternal_HappyPath_VoteGranted()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);            
+            var request = new VoteRequest
+            {
+                CandidateId = _otherServer1.Object.Id,
+                Term = 1,
+                LastLogIndex = -1,
+                LastLogTerm = -1
+            };
+
+            // Act
+            var response = _service.RequestVoteInternal(request);
+
+            // Assert
+            response.VoteGranted.Should().BeTrue();
+            response.Term.Should().Be(1);
         }
 
         public void HeartbeatTest()

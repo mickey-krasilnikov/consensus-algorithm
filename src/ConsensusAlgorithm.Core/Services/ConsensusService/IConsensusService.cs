@@ -12,7 +12,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
 
         AppendEntriesResponse AppendEntriesInternal(AppendEntriesRequest appendRequest);
 
-        RequestVoteResponse RequestVoteInternal(RequestVoteRequest voteRequest);
+        VoteResponse RequestVoteInternal(VoteRequest voteRequest);
 
         HeartbeatResponse Heartbeat(HeartbeatRequest request);
     }

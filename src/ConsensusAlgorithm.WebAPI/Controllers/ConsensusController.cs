@@ -53,7 +53,7 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// <param name="request">Request Vote Request</param>
 		/// <returns>Request Vote Response</returns>
 		[HttpPost("requestVote")]
-		public ActionResult<RequestVoteResponse> RequestVoteInternal(RequestVoteRequest request)
+		public ActionResult<VoteResponse> RequestVoteInternal(VoteRequest request)
 		{
 			var response = _consensusService.RequestVoteInternal(request);
 			return Ok(response);

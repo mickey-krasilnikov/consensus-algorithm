@@ -1,6 +1,6 @@
 ﻿namespace ConsensusAlgorithm.DTO.RequestVote
 {
-	public class RequestVoteRequest
+	public class VoteRequest
 	{
 		/// <summary>
 		/// Candidate requesting vote
