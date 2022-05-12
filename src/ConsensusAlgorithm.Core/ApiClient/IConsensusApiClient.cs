@@ -9,11 +9,11 @@ namespace ConsensusAlgorithm.Core.ApiClient
 	{
 		string Id { get; }
 
-		Task<VoteResponse?> RequestVoteInternalAsync(VoteRequest request);
-
-		Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest request);
-
 		Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest request);
+
+		Task<AppendEntriesResponse> AppendEntriesAsync(AppendEntriesRequest request);
+
+		Task<VoteResponse?> RequestVoteAsync(VoteRequest request);
 
 		Task<HeartbeatResponse> SendHeartbeatAsync(HeartbeatRequest request);
 	}

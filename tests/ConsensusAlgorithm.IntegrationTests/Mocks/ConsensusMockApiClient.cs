@@ -20,14 +20,14 @@ namespace ConsensusAlgorithm.IntegrationTests.Mocks
             _consensusService = consensusService;
         }
 
-        public Task<VoteResponse?> RequestVoteInternalAsync(VoteRequest request)
+        public Task<VoteResponse?> RequestVoteAsync(VoteRequest request)
         {
-            return Task.FromResult(_consensusService.RequestVoteInternal(request))!;
+            return Task.FromResult(_consensusService.RequestVote(request))!;
         }
 
-        public Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest request)
+        public Task<AppendEntriesResponse> AppendEntriesAsync(AppendEntriesRequest request)
         {
-            return Task.FromResult(_consensusService.AppendEntriesInternal(request));
+            return Task.FromResult(_consensusService.AppendEntries(request));
         }
 
         public Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)

@@ -10,9 +10,9 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
     {
         Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest appendRequest);
 
-        AppendEntriesResponse AppendEntriesInternal(AppendEntriesRequest appendRequest);
+        AppendEntriesResponse AppendEntries(AppendEntriesRequest appendRequest);
 
-        VoteResponse RequestVoteInternal(VoteRequest voteRequest);
+        VoteResponse RequestVote(VoteRequest voteRequest);
 
         HeartbeatResponse Heartbeat(HeartbeatRequest request);
     }

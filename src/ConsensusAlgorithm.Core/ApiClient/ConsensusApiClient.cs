@@ -25,21 +25,21 @@ namespace ConsensusAlgorithm.Core.ApiClient
             _baseUrl = baseURL;
         }
 
-        public async Task<VoteResponse?> RequestVoteInternalAsync(VoteRequest request)
+        public async Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)
         {
-            return await PostRequest<VoteRequest, VoteResponse>(request, RequestVoteUrl);
+            return await PostRequest<AppendEntriesExternalRequest, AppendEntriesExternalResponse>(request, AppendEntriesExternalUrl)
+                ?? new AppendEntriesExternalResponse { Success = false };
         }
 
-        public async Task<AppendEntriesResponse> AppendEntriesInternalAsync(AppendEntriesRequest request)
+        public async Task<AppendEntriesResponse> AppendEntriesAsync(AppendEntriesRequest request)
         {
             return await PostRequest<AppendEntriesRequest, AppendEntriesResponse>(request, AppendEntriesUrl)
                 ?? new AppendEntriesResponse { Success = false };
         }
 
-        public async Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)
+        public async Task<VoteResponse?> RequestVoteAsync(VoteRequest request)
         {
-            return await PostRequest<AppendEntriesExternalRequest, AppendEntriesExternalResponse>(request, AppendEntriesExternalUrl)
-                ?? new AppendEntriesExternalResponse { Success = false };
+            return await PostRequest<VoteRequest, VoteResponse>(request, RequestVoteUrl);
         }
 
         public async Task<HeartbeatResponse> SendHeartbeatAsync(HeartbeatRequest request)

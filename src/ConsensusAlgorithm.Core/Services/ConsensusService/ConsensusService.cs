@@ -75,7 +75,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 var serversAppendedEntries = 1;
                 Parallel.ForEach(_otherServers, async s =>
                 {
-                    var response = await s.AppendEntriesInternalAsync(new AppendEntriesRequest
+                    var response = await s.AppendEntriesAsync(new AppendEntriesRequest
                     {
                         LeaderId = _status.Id,
                         Term = currentTerm,
@@ -90,7 +90,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             }
         }
 
-        public AppendEntriesResponse AppendEntriesInternal(AppendEntriesRequest appendRequest)
+        public AppendEntriesResponse AppendEntries(AppendEntriesRequest appendRequest)
         {
             var currentTerm = _repo.GetCurrentTerm();
 
@@ -151,10 +151,10 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             return new AppendEntriesResponse { Success = true, Term = currentTerm };
         }
 
-        public VoteResponse RequestVoteInternal(VoteRequest voteRequest)
+        public VoteResponse RequestVote(VoteRequest voteRequest)
         {
             var currentTerm = _repo.GetCurrentTerm();
-            
+
             if (voteRequest.Term < currentTerm)
             {
                 return new VoteResponse { VoteGranted = false, Term = currentTerm };
@@ -165,6 +165,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 // step down
                 _status.State = ServerStatus.Follower;
                 _repo.SetCurrentTerm(voteRequest.Term);
+                currentTerm = voteRequest.Term;
             }
 
             var votedFor = _repo.GetCandidateIdVotedFor(currentTerm);
@@ -188,17 +189,19 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         {
             var currentTerm = _repo.GetCurrentTerm();
 
-            // obsolete request
-            if (heartbeat.Term < currentTerm) return new HeartbeatResponse { Success = true, Term = currentTerm };
+            if (heartbeat.Term < currentTerm)
+            {
+                return new HeartbeatResponse { Success = false, Term = currentTerm };
+            }
 
             // received from new leader -> stepdown
             if (heartbeat.Term > currentTerm)
             {
-                _status.State = ServerStatus.Follower;
                 _repo.SetCurrentTerm(heartbeat.Term);
                 currentTerm = heartbeat.Term;
             }
-
+                
+            _status.State = ServerStatus.Follower;
             _status.LeaderId = heartbeat.LeaderId;
 
             // reset election timeout
@@ -262,7 +265,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 var lastLogIndex = lastLog != null ? lastLog.Index : -1;
                 var lastLogTerm = lastLog != null ? lastLog.Term : -1;
 
-                var response = await s.RequestVoteInternalAsync(new VoteRequest
+                var response = await s.RequestVoteAsync(new VoteRequest
                 {
                     CandidateId = _status.Id,
                     Term = currentTerm,
@@ -307,7 +310,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                     Term = currentTerm
                 });
 
-                if (response.Success && response.Term > currentTerm)
+                if (response.Term > currentTerm)
                 {
                     // step down
                     _status.State = ServerStatus.Follower;

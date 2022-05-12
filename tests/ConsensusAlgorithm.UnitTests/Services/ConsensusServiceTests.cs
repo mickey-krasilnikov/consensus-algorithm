@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.DTO.RequestVote;
+using ConsensusAlgorithm.DTO.Heartbeat;
 
 namespace ConsensusAlgorithm.UnitTests.Services
 {
@@ -85,21 +86,6 @@ namespace ConsensusAlgorithm.UnitTests.Services
             );
         }
 
-        [Test]
-        public void StartTest()
-        {
-            _repoMock.Setup(r => r.GetLogEntries()).Returns(new List<LogEntity>());
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
-            Assert.DoesNotThrowAsync(() => _service.StartAsync(_cts.Token));
-            _cts.Cancel();
-        }
-
-        [Test]
-        public void StopTest()
-        {
-            Assert.DoesNotThrowAsync(() => _service.StopAsync(CancellationToken.None));
-        }
-
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
         public async Task AppendEntriesExternal_WhenStatusIsNotLeader_ActiveLeaderUnknown_ReturnNotSuccessfullResponse(ServerStatus state)
@@ -124,9 +110,9 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _otherServer2.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
             _otherServer3.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
             //checking that it's not acting as a leader
-            _otherServer1.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer2.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer3.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _otherServer1.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _otherServer2.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _otherServer3.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
         }
 
         [TestCase(ServerStatus.Candidate)]
@@ -156,9 +142,9 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _otherServer2.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
             _otherServer3.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
             //checking that it's not acting as a leader
-            _otherServer1.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer2.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer3.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _otherServer1.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _otherServer2.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _otherServer3.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
         }
 
         [TestCase(ServerStatus.Leader)]
@@ -186,13 +172,13 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _otherServer2.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
             _otherServer3.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
             // checking that it distribute the logs between followers
-            _otherServer1.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
-            _otherServer2.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
-            _otherServer3.Verify(s => s.AppendEntriesInternalAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
+            _otherServer1.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
+            _otherServer2.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
+            _otherServer3.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
         }
 
         [Test]
-        public void AppendEntriesInternal_WhenTermFromRequest_LessThenCurrentTerm_IgnoreRequest()
+        public void AppendEntries_WhenTermFromRequest_LessThenCurrentTerm_IgnoreRequest()
         {
             // Arrange         
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
@@ -211,7 +197,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var result = _service.AppendEntriesInternal(request);
+            var result = _service.AppendEntries(request);
 
             // Assert
             result.Success.Should().BeFalse();
@@ -221,7 +207,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntriesInternal_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown(ServerStatus state)
+        public void AppendEntries_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
@@ -242,10 +228,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var result = _service.AppendEntriesInternal(request);
+            var response = _service.AppendEntries(request);
 
             // Assert
-            result.Term.Should().Be(1);
+            response.Term.Should().Be(1);
             _repoMock.Verify(r => r.SetCurrentTerm(It.IsAny<int>()), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
         }
@@ -253,7 +239,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntriesInternal_WhenTermFromRequest_EqualCurrentTerm_DoNotUpdateCurrentTerm_StepDown(ServerStatus state)
+        public void AppendEntries_WhenTermFromRequest_EqualCurrentTerm_DoNotUpdateCurrentTerm_StepDown(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
@@ -274,7 +260,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var result = _service.AppendEntriesInternal(request);
+            var result = _service.AppendEntries(request);
 
             // Assert
             result.Term.Should().Be(1);
@@ -285,7 +271,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntriesInternal_WhenPrevLogTermFromRequest_NotEqualLocalPrevLogTerm_IgnoreRequest(ServerStatus state)
+        public void AppendEntries_WhenPrevLogTermFromRequest_NotEqualLocalPrevLogTerm_IgnoreRequest(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
@@ -306,7 +292,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var result = _service.AppendEntriesInternal(request);
+            var result = _service.AppendEntries(request);
 
             // Assert
             result.Success.Should().BeFalse();
@@ -317,7 +303,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntriesInternal_HappyPath_LogsAppendedAndAppliedToStateMachine(ServerStatus state)
+        public void AppendEntries_HappyPath_LogsAppendedAndAppliedToStateMachine(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
@@ -338,7 +324,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var result = _service.AppendEntriesInternal(request);
+            var result = _service.AppendEntries(request);
 
             // Assert
             result.Success.Should().BeTrue();
@@ -349,7 +335,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         }
 
         [Test]
-        public void RequestVoteInternal_WhenTermFromRequest_LessThenCurrentTerm_IgnoreVoteRequest()
+        public void RequestVote_WhenTermFromRequest_LessThenCurrentTerm_IgnoreRequest()
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
@@ -362,7 +348,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var response = _service.RequestVoteInternal(request);
+            var response = _service.RequestVote(request);
 
             // Assert
             response.VoteGranted.Should().BeFalse();
@@ -370,7 +356,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         }
 
         [Test]
-        public void RequestVoteInternal_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown()
+        public void RequestVote_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown()
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
@@ -383,16 +369,17 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            _service.RequestVoteInternal(request);
+            var response = _service.RequestVote(request);
 
             // Assert
+            response.Term.Should().Be(2);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
             _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Once);
             _repoMock.Verify(s => s.GetCandidateIdVotedFor(It.IsAny<int>()), Times.Once);
         }
 
         [Test]
-        public void RequestVoteInternal_WhenServerAlreadyVoted_IgnoreVoteRequest()
+        public void RequestVote_WhenServerAlreadyVoted_IgnoreVoteRequest()
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
@@ -407,7 +394,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var response = _service.RequestVoteInternal(request);
+            var response = _service.RequestVote(request);
 
             // Assert
             response.VoteGranted.Should().BeFalse();
@@ -415,10 +402,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
         }
 
         [Test]
-        public void RequestVoteInternal_WhenLastLogIndexFromRequest_LessThenLocalLastLogIndex_IgnoreVoteRequest()
+        public void RequestVote_WhenLastLogIndexFromRequest_LessThenLocalLastLogIndex_IgnoreVoteRequest()
         {
             // Arrange
-            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1); 
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             var appendLogsRequest = new AppendEntriesRequest
             {
@@ -442,8 +429,8 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var appendResponse = _service.AppendEntriesInternal(appendLogsRequest);
-            var voteResponse = _service.RequestVoteInternal(voteRequest);
+            var appendResponse = _service.AppendEntries(appendLogsRequest);
+            var voteResponse = _service.RequestVote(voteRequest);
 
             // Assert
             appendResponse.Success.Should().BeTrue();
@@ -452,7 +439,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         }
 
         [Test]
-        public void RequestVoteInternal_WhenLastLogTermFromRequest_LessThenLocalLastLogTerm_IgnoreVoteRequest()
+        public void RequestVote_WhenLastLogTermFromRequest_LessThenLocalLastLogTerm_IgnoreVoteRequest()
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
@@ -479,8 +466,8 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var appendResponse = _service.AppendEntriesInternal(appendLogsRequest);
-            var voteResponse = _service.RequestVoteInternal(voteRequest);
+            var appendResponse = _service.AppendEntries(appendLogsRequest);
+            var voteResponse = _service.RequestVote(voteRequest);
 
             // Assert
             appendResponse.Success.Should().BeTrue();
@@ -488,12 +475,11 @@ namespace ConsensusAlgorithm.UnitTests.Services
             voteResponse.Term.Should().Be(2);
         }
 
-
         [Test]
-        public void RequestVoteInternal_HappyPath_VoteGranted()
+        public void RequestVote_HappyPath_VoteGranted()
         {
             // Arrange
-            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);            
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new VoteRequest
             {
                 CandidateId = _otherServer1.Object.Id,
@@ -503,15 +489,99 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
 
             // Act
-            var response = _service.RequestVoteInternal(request);
+            var response = _service.RequestVote(request);
 
             // Assert
             response.VoteGranted.Should().BeTrue();
             response.Term.Should().Be(1);
         }
 
-        public void HeartbeatTest()
+        [Test]
+        public void Heartbeat_WhenTermFromRequest_LessThenCurrentTerm_IgnoreRequest()
         {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
+            var request = new HeartbeatRequest
+            {
+                LeaderId = _otherServer1.Object.Id,
+                Term = 1
+            };
+
+            // Act
+            var response = _service.Heartbeat(request);
+
+            // Assert
+            response.Success.Should().BeFalse();
+            response.Term.Should().Be(2);
+        }
+
+        [Test]
+        public void Heartbeat_HappyPath_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
+            var request = new HeartbeatRequest
+            {
+                LeaderId = _otherServer1.Object.Id,
+                Term = 2
+            };
+
+            // Act
+            var response = _service.Heartbeat(request);
+
+            // Assert
+            response.Success.Should().BeTrue();
+            response.Term.Should().Be(2);
+            _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Once);
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
+            _statusMock.VerifySet(s => s.LeaderId = request.LeaderId);
+        }
+
+        [Test]
+        public void Heartbeat_HappyPath_HeartbeatReceived()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
+            var request = new HeartbeatRequest
+            {
+                LeaderId = _otherServer1.Object.Id,
+                Term = 1
+            };
+
+            // Act
+            var response = _service.Heartbeat(request);
+
+            // Assert
+            response.Success.Should().BeTrue();
+            response.Term.Should().Be(1);
+            _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Never);
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
+            _statusMock.VerifySet(s => s.LeaderId = request.LeaderId);
+        }
+
+        [Test]
+        public void StartTest()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetLogEntries()).Returns(new List<LogEntity>());
+            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
+
+            // Act
+            var result = _service.StartAsync(_cts.Token);
+            _cts.Cancel();
+
+            // Assert
+            result.Should().Be(Task.CompletedTask);
+        }
+
+        [Test]
+        public void StopTest()
+        {
+            // Act
+            var result = _service.StopAsync(CancellationToken.None);
+
+            // Assert
+            result.Should().Be(Task.CompletedTask);
         }
     }
 }

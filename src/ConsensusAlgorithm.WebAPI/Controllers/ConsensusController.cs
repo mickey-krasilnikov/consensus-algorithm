@@ -41,9 +41,9 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// <param name="request">AppendEntriesRequest</param>
 		/// <returns>AppendEntriesResponse</returns>
 		[HttpPost("appendEntries")]
-		public ActionResult<AppendEntriesResponse> AppendEntriesInternal(AppendEntriesRequest request)
+		public ActionResult<AppendEntriesResponse> AppendEntries(AppendEntriesRequest request)
 		{
-			var response = _consensusService.AppendEntriesInternal(request);
+			var response = _consensusService.AppendEntries(request);
 			return response.Success ? Ok(response) : BadRequest(response);
 		}
 
@@ -53,9 +53,9 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// <param name="request">Request Vote Request</param>
 		/// <returns>Request Vote Response</returns>
 		[HttpPost("requestVote")]
-		public ActionResult<VoteResponse> RequestVoteInternal(VoteRequest request)
+		public ActionResult<VoteResponse> RequestVote(VoteRequest request)
 		{
-			var response = _consensusService.RequestVoteInternal(request);
+			var response = _consensusService.RequestVote(request);
 			return Ok(response);
 		}
 
@@ -63,7 +63,7 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// Heartbeat endpoint
 		/// </summary>
 		[HttpPost("heartbeat")]
-		public ActionResult<HeartbeatResponse> SendHeartbeatInternal(HeartbeatRequest request)
+		public ActionResult<HeartbeatResponse> SendHeartbeat(HeartbeatRequest request)
 		{
 			var response = _consensusService.Heartbeat(request);
 			return response.Success ? Ok(response) : BadRequest(response);
