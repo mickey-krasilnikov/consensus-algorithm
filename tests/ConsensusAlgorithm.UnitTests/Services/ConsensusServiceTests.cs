@@ -583,5 +583,29 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             result.Should().Be(Task.CompletedTask);
         }
+
+        [Test]
+        public void RunElectionTest()
+        {
+            // Arrange
+
+            // Act
+            ((ConsensusService)_service).RunElection(null);
+
+            // Assert
+            
+        }
+
+        [Test]
+        public void SendHeartbeatTest()
+        {
+            // Arrange
+
+            // Act
+            ((ConsensusService)_service).SendHeartbeat(null);
+
+            // Assert
+            
+        }
     }
 }

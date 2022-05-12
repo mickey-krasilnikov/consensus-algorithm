@@ -9,7 +9,9 @@ using ConsensusAlgorithm.Core.Services.TimeoutService;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
 using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.DTO.AppendEntriesExternal;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("ConsensusAlgorithm.UnitTests")]
 namespace ConsensusAlgorithm.Core.Services.ConsensusService
 {
     public class ConsensusService : IConsensusService
@@ -239,7 +241,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
 
         #endregion IHostedService implementation
 
-        private void RunElection(object? state)
+        internal void RunElection(object? state)
         {
             // Follower -> Candidate
             _status.State = ServerStatus.Candidate;
@@ -297,7 +299,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             }
         }
 
-        private void SendHeartbeat(object? state)
+        internal void SendHeartbeat(object? state)
         {
             var currentTerm = _repo.GetCurrentTerm();
 
