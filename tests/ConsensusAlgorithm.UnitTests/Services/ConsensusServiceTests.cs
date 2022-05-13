@@ -24,7 +24,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
     public class ConsensusServiceTests : TestBase
     {
         private readonly CancellationTokenSource _cts = new();
-
+        private readonly string _localServerId = "local_server";
         private Mock<IConsensusRepository> _repoMock = null!;
         private Mock<IStateMachine> _stateMachineMock = null!;
         private Mock<ILogger<ConsensusService>> _loggerMock = null!;
@@ -73,7 +73,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
             _timeoutMock = new Mock<ITimeoutService>();
             _statusMock = new Mock<IServerStatusService>();
-            _statusMock.SetupGet(s => s.Id).Returns("local_server");
+            _statusMock.SetupGet(s => s.Id).Returns(_localServerId);
 
             _service = new ConsensusService
             (
@@ -585,15 +585,137 @@ namespace ConsensusAlgorithm.UnitTests.Services
         }
 
         [Test]
-        public void RunElectionTest()
+        public void RunElection_Verify_StatusSetAsCandidate_IncrementCurrentTerm_VoteForHimself()
         {
             // Arrange
+            const int currentTerm = 1;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
 
             // Act
-            ((ConsensusService)_service).RunElection(null);
+            ((ConsensusService)_service).RunElection(default);
 
             // Assert
-            
+            _statusMock.VerifySet(s => s.State = ServerStatus.Candidate, Times.Once); // set status as candidate
+            _repoMock.Verify(r => r.SetCurrentTerm(currentTerm + 1), Times.Once); // increment current term
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once); // vote for himself
+        }
+
+        [Test]
+        public void RunElection_HappyPath_WhenMajorityVoteFor_BecameLeader()
+        {
+            // Arrange
+            const int currentTerm = 1;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            var voteForResponse = new VoteResponse { VoteGranted = true, Term = currentTerm + 1 };
+            var voteAgainstResponse = new VoteResponse { VoteGranted = false, Term = currentTerm + 1 };
+            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteForResponse);
+            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteForResponse);
+            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteAgainstResponse);
+            _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
+
+            // Act
+            ((ConsensusService)_service).RunElection(default);
+
+            // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
+        }
+
+        [Test]
+        public void RunElection_WhenMajorityDidNotVoteFor_RemainCandidate()
+        {
+            // Arrange
+            const int currentTerm = 1;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            var voteResponse = new VoteResponse { VoteGranted = false, Term = currentTerm + 1 };
+            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+
+            // Act
+            ((ConsensusService)_service).RunElection(default);
+
+            // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Candidate, Times.Once);
+            _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Never);
+        }
+
+        [Test]
+        public void RunElection_WhenTermFromResponse_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown()
+        {
+            // Arrange
+            const int currentTerm = 1;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            var voteResponse = new VoteResponse { VoteGranted = false, Term = currentTerm + 2 };
+            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+
+            // Act
+            ((ConsensusService)_service).RunElection(default);
+
+            // Assert
+            _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 2), Times.Once);
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Once);
+            _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Never);
+        }
+
+        [Test]
+        public void RunElection_WhenDifferentTermsFromResponse_BiggerThenCurrentTerm_UpdateCurrentTermToMaxTerm_StepDown()
+        {
+            // Arrange
+            const int currentTerm = 1;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>()))
+                .ReturnsAsync(new VoteResponse { VoteGranted = false, Term = currentTerm + 2 });
+            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>()))
+                .ReturnsAsync(new VoteResponse { VoteGranted = false, Term = currentTerm + 5 });
+            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>()))
+                .ReturnsAsync(new VoteResponse { VoteGranted = false, Term = currentTerm + 1 });
+
+            // Act
+            ((ConsensusService)_service).RunElection(default);
+
+            // Assert
+            _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 5), Times.Once);
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Once);
+            _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Never);
+        }
+
+        [Test]
+        public void RunElection_HappyPath_WhenSomeVotersAreDead_ButAliveServersVotedFor_BecameLeader()
+        {
+            // Arrange
+            const int currentTerm = 1;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            var voteResponse = new VoteResponse { VoteGranted = true, Term = currentTerm + 1 };
+            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
+            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
+            _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
+
+            // Act
+            ((ConsensusService)_service).RunElection(default);
+
+            // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
+        }
+
+        [Test]
+        public void RunElection_HappyPath_WhenAllServersAreDead_BecameLeader()
+        {
+            // Arrange
+            const int currentTerm = 1;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
+            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
+            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
+            _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
+
+            // Act
+            ((ConsensusService)_service).RunElection(default);
+
+            // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
         }
 
         [Test]
@@ -605,7 +727,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             ((ConsensusService)_service).SendHeartbeat(null);
 
             // Assert
-            
+
         }
     }
 }

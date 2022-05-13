@@ -202,7 +202,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 _repo.SetCurrentTerm(heartbeat.Term);
                 currentTerm = heartbeat.Term;
             }
-                
+
             _status.State = ServerStatus.Follower;
             _status.LeaderId = heartbeat.LeaderId;
 
@@ -249,14 +249,13 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             var currentTerm = _repo.GetCurrentTerm();
 
             // increment current term
-            _repo.SetCurrentTerm(currentTerm++);
-            _logger.LogInformation("Running Election. Current Term: {Term}", currentTerm);
+            _repo.SetCurrentTerm(++currentTerm);
 
             // vote for himself
             _repo.SetCandidateIdVotedFor(_status.Id, currentTerm);
             var votes = 1;
             var serversAlive = 1;
-
+            var maxTermFromResponses = currentTerm;
             // reset election timeout
             _electionTimer?.Change(_electionTimeout, Timeout.Infinite);
 
@@ -277,15 +276,16 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 if (response != null)
                 {
                     Interlocked.Increment(ref serversAlive);
-                    if (response.Term > currentTerm)
-                    {
-                        // step down
-                        _status.State = ServerStatus.Follower;
-                        _repo.SetCurrentTerm(response.Term);
-                    }
+                    if (maxTermFromResponses < response.Term) Interlocked.Exchange(ref maxTermFromResponses, response.Term);
                     if (response.VoteGranted) Interlocked.Increment(ref votes);
                 }
             });
+
+            if (maxTermFromResponses > currentTerm)
+            {
+                _status.State = ServerStatus.Follower;
+                _repo.SetCurrentTerm(maxTermFromResponses);
+            }
 
             if (_status.State == ServerStatus.Candidate && votes >= Math.Ceiling(decimal.Divide(serversAlive, 2)))
             {
