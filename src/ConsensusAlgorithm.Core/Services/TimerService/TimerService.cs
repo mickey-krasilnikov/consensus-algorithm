@@ -16,12 +16,11 @@
         public void Initialize(TimerCallback electionCallback, TimerCallback sendHeartbeatCallback)
         {
             _electionTimeout = GetRandomElectionTimeout();
-            if (!_isInitialized)
-            {
-                _electionTimer = new Timer(electionCallback, null, _electionTimeout, Timeout.Infinite);
-                _heartbeatTimer = new Timer(sendHeartbeatCallback, null, Timeout.Infinite, 0);
-                _isInitialized = true;
-            }
+            if (_isInitialized) StopAll();
+
+            _electionTimer = new Timer(electionCallback, null, _electionTimeout, Timeout.Infinite);
+            _heartbeatTimer = new Timer(sendHeartbeatCallback, null, Timeout.Infinite, 0);
+            _isInitialized = true;
         }
 
         public void StopAll()
