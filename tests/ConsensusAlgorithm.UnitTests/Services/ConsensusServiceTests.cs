@@ -31,7 +31,6 @@ namespace ConsensusAlgorithm.UnitTests.Services
         private Mock<IConsensusApiClient> _otherServer1 = null!;
         private Mock<IConsensusApiClient> _otherServer2 = null!;
         private Mock<IConsensusApiClient> _otherServer3 = null!;
-        private ConsensusClusterConfig _config = null!;
         private Mock<ITimeoutService> _timeoutMock = null!;
         private Mock<IServerStatusService> _statusMock = null!;
         private IConsensusService _service = null!;
@@ -60,17 +59,6 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 _otherServer3.Object,
             };
 
-            _config = new ConsensusClusterConfig
-            {
-                CurrentServerId = "1",
-                ServerList = new Dictionary<string, string>()
-                {
-                    { _otherServer1.Object.Id, "mockUrl1" },
-                    { _otherServer2.Object.Id, "mockUrl2" },
-                    { _otherServer3.Object.Id, "mockUrl3" },
-                }
-            };
-
             _timeoutMock = new Mock<ITimeoutService>();
             _statusMock = new Mock<IServerStatusService>();
             _statusMock.SetupGet(s => s.Id).Returns(_localServerId);
@@ -85,6 +73,8 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 _statusMock.Object
             );
         }
+
+        #region AppendEntriesExternal
 
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
@@ -155,6 +145,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.SetupProperty(s => s.LeaderId, _statusMock.Object.Id);
             _statusMock.SetupGet(s => s.IsLeader).Returns(true);
             _statusMock.SetupGet(s => s.HasLeader).Returns(true);
+            var otherServersResponse = new AppendEntriesResponse { Success = true, Term = 0 };
+            _otherServer1.Setup(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>())).ReturnsAsync(otherServersResponse);
+            _otherServer2.Setup(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>())).ReturnsAsync(otherServersResponse);
+            _otherServer3.Setup(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>())).ReturnsAsync(otherServersResponse);
             var request = new AppendEntriesExternalRequest
             {
                 Commands = new List<string> { "CLEAR X X", "SET X X" }
@@ -176,6 +170,12 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _otherServer2.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
             _otherServer3.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
         }
+
+        //TODO: AppendEntriesExternal OtherServersReturnTermBiggerThenCurrent
+
+        #endregion AppendEntriesExternal
+
+        #region AppendEntries
 
         [Test]
         public void AppendEntries_WhenTermFromRequest_LessThenCurrentTerm_IgnoreRequest()
@@ -333,6 +333,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Verify(r => r.AppendLogEntry(It.IsAny<LogEntity>()), Times.Exactly(2));
             _stateMachineMock.Verify(r => r.Apply(It.IsAny<string>()), Times.Exactly(2));
         }
+
+        #endregion AppendEntries
+
+        #region RequestVote
 
         [Test]
         public void RequestVote_WhenTermFromRequest_LessThenCurrentTerm_IgnoreRequest()
@@ -496,6 +500,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             response.Term.Should().Be(1);
         }
 
+        #endregion RequestVote
+
+        #region Heartbeat
+
         [Test]
         public void Heartbeat_WhenTermFromRequest_LessThenCurrentTerm_IgnoreRequest()
         {
@@ -559,6 +567,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.VerifySet(s => s.LeaderId = request.LeaderId);
         }
 
+        #endregion Heartbeat
+
+        #region IHostedService
+
         [Test]
         public void StartTest()
         {
@@ -583,6 +595,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             result.Should().Be(Task.CompletedTask);
         }
+
+        #endregion IHostedService
+
+        #region RunElection_Internal
 
         [Test]
         public void RunElection_Verify_StatusSetAsCandidate_IncrementCurrentTerm_VoteForHimself()
@@ -718,6 +734,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
         }
 
+        #endregion RunElection_Internal
+
+        #region SendHeartbeat_Internal
+
         [Test]
         public void SendHeartbeatTest()
         {
@@ -729,5 +749,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
 
         }
+
+        #endregion SendHeartbeat_Internal
     }
 }
