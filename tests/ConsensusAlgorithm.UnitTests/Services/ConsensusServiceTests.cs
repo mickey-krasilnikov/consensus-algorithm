@@ -742,15 +742,67 @@ namespace ConsensusAlgorithm.UnitTests.Services
         #region SendHeartbeat_Internal
 
         [Test]
-        public void SendHeartbeatTest()
+        public void SendHeartbeat_HappyPath_AllFollowersReceivedHeartbeat_HasSameTerm()
         {
             // Arrange
+            const int currentTerm = 5;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm });
+            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm });
+            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm });
+
 
             // Act
             ((ConsensusService)_service).SendHeartbeat(null);
 
             // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Never);
+            _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Never);
+        }
 
+        [Test]
+        public void SendHeartbeat_FollowersHasBiggerTerm_PickBiggest_UpdateCurrentTerm_StepDown()
+        {
+            // Arrange
+            const int currentTerm = 5;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm + 1 });
+            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm + 3 });
+            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm + 2 });
+
+            // Act
+            ((ConsensusService)_service).SendHeartbeat(null);
+
+            // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Once);
+            _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 3), Times.Once);
+        }
+
+        [Test]
+        public void SendHeartbeat_FollowersOffline_StayLeader()
+        {
+            // Arrange
+            const int currentTerm = 5;
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
+            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = false });
+            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = false });
+            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
+                .ReturnsAsync(new HeartbeatResponse { Success = false });
+
+            // Act
+            ((ConsensusService)_service).SendHeartbeat(null);
+
+            // Assert
+            _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Never);
+            _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Never);
         }
 
         #endregion SendHeartbeat_Internal

@@ -302,6 +302,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         internal void SendHeartbeat(object? state)
         {
             var currentTerm = _repo.GetCurrentTerm();
+            var maxTermFromResponses = currentTerm;
 
             // send heartbeat to all other servers
             Parallel.ForEach(_otherServers, async s =>
@@ -311,23 +312,25 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                     LeaderId = _status.Id,
                     Term = currentTerm
                 });
+                if (maxTermFromResponses < response.Term) Interlocked.Exchange(ref maxTermFromResponses, response.Term);
 
-                if (response.Term > currentTerm)
-                {
-                    // step down
-                    _status.State = ServerStatus.Follower;
-                    _repo.SetCurrentTerm(response.Term);
+            }); 
+            
+            if (maxTermFromResponses > currentTerm)
+            {
+                // step down
+                _status.State = ServerStatus.Follower;
+                _repo.SetCurrentTerm(maxTermFromResponses);
 
-                    // stop heartbeat timer
-                    _heartbeatTimer?.Change(Timeout.Infinite, 0);
+                // stop heartbeat timer
+                _heartbeatTimer?.Change(Timeout.Infinite, 0);
 
-                    // reset timeout
-                    _electionTimeout = _timeoutService.GetRandomTimeout();
+                // reset timeout
+                _electionTimeout = _timeoutService.GetRandomTimeout();
 
-                    // start election timer
-                    _electionTimer?.Change(Timeout.Infinite, 0);
-                }
-            });
+                // start election timer
+                _electionTimer?.Change(Timeout.Infinite, 0);
+            }
         }
     }
 }
