@@ -1,4 +1,4 @@
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using ConsensusAlgorithm.DataAccess;
 using Moq;
 using ConsensusAlgorithm.Core.StateMachine;
@@ -45,12 +45,15 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
             _otherServer1 = new Mock<IConsensusApiClient>();
             _otherServer1.SetupGet(s => s.Id).Returns("remote_server_1");
+            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>())).ReturnsAsync(new HeartbeatResponse { Success = true });
 
             _otherServer2 = new Mock<IConsensusApiClient>();
             _otherServer2.SetupGet(s => s.Id).Returns("remote_server_2");
+            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>())).ReturnsAsync(new HeartbeatResponse { Success = true });
 
             _otherServer3 = new Mock<IConsensusApiClient>();
             _otherServer3.SetupGet(s => s.Id).Returns("remote_server_3");
+            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>())).ReturnsAsync(new HeartbeatResponse { Success = true });
 
             _otherServers = new List<IConsensusApiClient>
             {

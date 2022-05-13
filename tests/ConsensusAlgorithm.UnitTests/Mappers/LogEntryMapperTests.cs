@@ -11,10 +11,17 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
     [TestFixture]
     public class LogEntryMapperTests
     {
-        [TestCaseSource(nameof(ToLogEntryTestCases))]
-        public void ToLogEntryTest(LogEntity entity)
+        [TestCase(1, 1, "")]
+        [TestCase(2, 2, "TESTCOMMAND")]
+        public void ToLogEntryTest(int term, int index, string command)
         {
+            //Arrange
+            var entity = new LogEntity() { Term = term, Index = index, Command = command };
+
+            //Act
             var entry = entity.ToLogEntry();
+
+            //Assert
             entry.Should().NotBeNull();
             entry.Term.Should().Be(entity.Term);
             entry.Command?.Should().Be(entity.Command);
@@ -22,13 +29,17 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
         }
 
         [TestCaseSource(nameof(ToLogEntriesTestCases))]
-        public void ToLogEntriesTest(IEnumerable<LogEntity> entities)
+        public void ToLogEntriesTest(List<LogEntity> entities)
         {
+            //Act
             var entries = entities.ToLogEntries();
             entries.Should().NotBeNull();
+
+            //Assert
             foreach (var entity in entities)
             {
                 var entry = entries.FirstOrDefault(e => e.Index == entity.Index);
+
                 entry.Should().NotBeNull();
                 entry!.Term.Should().Be(entity.Term);
                 entry!.Command?.Should().Be(entity.Command);
@@ -36,10 +47,17 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
             }
         }
 
-        [TestCaseSource(nameof(ToLogEntityTestCases))]
-        public void ToLogEntityTest(LogEntry entry)
+        [TestCase(1, 1, "")]
+        [TestCase(2, 2, "TESTCOMMAND")]
+        public void ToLogEntityTest(int term, int index, string command)
         {
+            //Arrange
+            var entry = new LogEntry() { Term = term, Index = index, Command = command };
+
+            //Act
             var entity = entry.ToLogEntity();
+
+            //Assert
             entity.Should().NotBeNull();
             entity.Term.Should().Be(entry.Term);
             entity.Command?.Should().Be(entry.Command);
@@ -47,9 +65,12 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
         }
 
         [TestCaseSource(nameof(ToLogEntitiesTestCases))]
-        public void ToLogEntitiesTest(IEnumerable<LogEntry> entries)
+        public void ToLogEntitiesTest(List<LogEntry> entries)
         {
+            //Act
             var entities = entries.ToLogEntities();
+
+            //Assert
             entities.Should().NotBeNull();
             foreach (var entry in entries)
             {
@@ -61,50 +82,34 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
             }
         }
 
-        public readonly static object[] ToLogEntryTestCases =
-        {
-            new LogEntity(),
-            new LogEntity { Command = "TESTCOMMAND" },
-            new LogEntity { Index = 0 },
-            new LogEntity { Term = 0 },
-            new LogEntity { Command = "TESTCOMMAND", Index = 0, Term = 0 }
-        };
-
         public readonly static object[] ToLogEntriesTestCases =
         {
-            new List<LogEntity>(),
-            new List<LogEntity> { new LogEntity() },
-            new List<LogEntity>
-            {
-                new LogEntity(),
-                new LogEntity { Command = "TESTCOMMAND" },
-                new LogEntity { Index = 0 },
-                new LogEntity { Term = 0 },
-                new LogEntity { Command = "TESTCOMMAND", Index = 0, Term = 0 }
-            }
-        };
-
-        public readonly static object[] ToLogEntityTestCases =
-        {
-            new LogEntry(),
-            new LogEntry { Command = "TESTCOMMAND" },
-            new LogEntry { Index = 0 },
-            new LogEntry { Term = 0 },
-            new LogEntry { Command = "TESTCOMMAND", Index = 0, Term = 0 }
+            new TestCaseData(new List<LogEntity>()) { TestName = "ToLogEntries(Empty List Of LogEntity)" },
+            new TestCaseData(new List<LogEntity> { new LogEntity() }) { TestName = "ToLogEntries(List With One Empty LogEntity)" },
+            new TestCaseData
+            (
+                new List<LogEntity>
+                {
+                    new LogEntity(),
+                    new LogEntity { Command = string.Empty, Index=0, Term = 0  },
+                    new LogEntity { Command = "TESTCOMMAND", Index = 0, Term = 0 }
+                }
+            ) { TestName = "ToLogEntries(List Of LogEntity)"}
         };
 
         public readonly static object[] ToLogEntitiesTestCases =
         {
-            new List<LogEntry>(),
-            new List<LogEntry> { new LogEntry() },
-            new List<LogEntry>
-            {
-                new LogEntry(),
-                new LogEntry { Command = "TESTCOMMAND" },
-                new LogEntry { Index = 0 },
-                new LogEntry { Term = 0 },
-                new LogEntry { Command = "TESTCOMMAND", Index = 0, Term = 0 }
-            }
+            new TestCaseData(new List<LogEntry>()) { TestName = "ToLogEntities(Empty List Of LogEntity)" },
+            new TestCaseData(new List<LogEntry> { new LogEntry() }) { TestName = "ToLogEntities(List With One Empty LogEntity)" },
+            new TestCaseData
+            (
+                new List<LogEntry>
+                {
+                    new LogEntry(),
+                    new LogEntry { Command = string.Empty, Index=0, Term = 0  },
+                    new LogEntry { Command = "TESTCOMMAND", Index = 0, Term = 0 }
+                }
+            ) { TestName = "ToLogEntities(List Of LogEntity)" }
         };
     }
 }
