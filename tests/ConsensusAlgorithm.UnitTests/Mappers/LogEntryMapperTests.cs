@@ -84,8 +84,8 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
 
         public readonly static object[] ToLogEntriesTestCases =
         {
-            new TestCaseData(new List<LogEntity>()) { TestName = "ToLogEntries(Empty List Of LogEntity)" },
-            new TestCaseData(new List<LogEntity> { new LogEntity() }) { TestName = "ToLogEntries(List With One Empty LogEntity)" },
+            new TestCaseData(new List<LogEntity>()) { TestName = "ToLogEntriesTest(Empty List Of LogEntity)" },
+            new TestCaseData(new List<LogEntity> { new LogEntity() }) { TestName = "ToLogEntriesTest(List With One Empty LogEntity)" },
             new TestCaseData
             (
                 new List<LogEntity>
@@ -94,13 +94,13 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
                     new LogEntity { Command = string.Empty, Index=0, Term = 0  },
                     new LogEntity { Command = "TESTCOMMAND", Index = 0, Term = 0 }
                 }
-            ) { TestName = "ToLogEntries(List Of LogEntity)"}
+            ) { TestName = "ToLogEntriesTest(List Of LogEntity)"}
         };
 
         public readonly static object[] ToLogEntitiesTestCases =
         {
-            new TestCaseData(new List<LogEntry>()) { TestName = "ToLogEntities(Empty List Of LogEntity)" },
-            new TestCaseData(new List<LogEntry> { new LogEntry() }) { TestName = "ToLogEntities(List With One Empty LogEntity)" },
+            new TestCaseData(new List<LogEntry>()) { TestName = "ToLogEntitiesTest(Empty List Of LogEntity)" },
+            new TestCaseData(new List<LogEntry> { new LogEntry() }) { TestName = "ToLogEntitiesTest(List With One Empty LogEntity)" },
             new TestCaseData
             (
                 new List<LogEntry>
@@ -109,7 +109,7 @@ namespace ConsensusAlgorithm.UnitTests.Mappers
                     new LogEntry { Command = string.Empty, Index=0, Term = 0  },
                     new LogEntry { Command = "TESTCOMMAND", Index = 0, Term = 0 }
                 }
-            ) { TestName = "ToLogEntities(List Of LogEntity)" }
+            ) { TestName = "ToLogEntitiesTest(List Of LogEntity)" }
         };
     }
 }

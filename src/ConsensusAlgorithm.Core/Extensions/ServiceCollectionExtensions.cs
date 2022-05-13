@@ -4,9 +4,9 @@ using Microsoft.Extensions.Configuration;
 using ConsensusAlgorithm.Core.StateMachine;
 using ConsensusAlgorithm.DataAccess;
 using ConsensusAlgorithm.Core.ApiClient;
-using ConsensusAlgorithm.Core.Services.TimeoutService;
 using ConsensusAlgorithm.Core.Services.ConsensusService;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
+using ConsensusAlgorithm.Core.Services.TimerService;
 
 namespace ConsensusAlgorithm.Core.Extensions
 {
@@ -16,7 +16,7 @@ namespace ConsensusAlgorithm.Core.Extensions
         {
             services.AddSingleton(configuration.GetRequiredSection("ConsensusCluster").Get<ConsensusClusterConfig>());
             services.AddSingleton<IConsensusRepository, ConsensusInMemoryRepository>();
-            services.AddSingleton<ITimeoutService, TimeoutService>();
+            services.AddSingleton<ITimerService, TimerService>();
             services.AddSingleton<IServerStatusService>(s => new ServerStatusService(s.GetRequiredService<ConsensusClusterConfig>().CurrentServerId));
             services.AddSingleton<IStateMachine, DictionaryStateMachine>();
             services.AddSingleton<IConsensusService, ConsensusService>();

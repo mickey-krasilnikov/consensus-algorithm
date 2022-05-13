@@ -5,11 +5,9 @@ using ConsensusAlgorithm.Core.StateMachine;
 using Microsoft.Extensions.Logging;
 using ConsensusAlgorithm.Core.ApiClient;
 using System.Collections.Generic;
-using ConsensusAlgorithm.Core.Configuration;
 using System.Threading;
 using ConsensusAlgorithm.DataAccess.Entities;
 using ConsensusAlgorithm.Core.Services.ConsensusService;
-using ConsensusAlgorithm.Core.Services.TimeoutService;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
 using ConsensusAlgorithm.DTO.AppendEntriesExternal;
 using System.Threading.Tasks;
@@ -17,6 +15,7 @@ using FluentAssertions;
 using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.DTO.RequestVote;
 using ConsensusAlgorithm.DTO.Heartbeat;
+using ConsensusAlgorithm.Core.Services.TimerService;
 
 namespace ConsensusAlgorithm.UnitTests.Services
 {
@@ -31,7 +30,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         private Mock<IConsensusApiClient> _otherServer1 = null!;
         private Mock<IConsensusApiClient> _otherServer2 = null!;
         private Mock<IConsensusApiClient> _otherServer3 = null!;
-        private Mock<ITimeoutService> _timeoutMock = null!;
+        private Mock<ITimerService> _timeoutMock = null!;
         private Mock<IServerStatusService> _statusMock = null!;
         private IConsensusService _service = null!;
         private IList<IConsensusApiClient> _otherServers = null!;
@@ -62,7 +61,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 _otherServer3.Object,
             };
 
-            _timeoutMock = new Mock<ITimeoutService>();
+            _timeoutMock = new Mock<ITimerService>();
             _statusMock = new Mock<IServerStatusService>();
             _statusMock.SetupGet(s => s.Id).Returns(_localServerId);
 
@@ -210,12 +209,11 @@ namespace ConsensusAlgorithm.UnitTests.Services
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntries_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_StepDown(ServerStatus state)
+        public void AppendEntries_WhenTermFromRequest_BiggerThenCurrentTerm_UpdateCurrentTerm_ResetTimeout_StepDown(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(0);
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             var request = new AppendEntriesRequest
             {
                 LeaderId = _otherServer1.Object.Id,
@@ -237,17 +235,17 @@ namespace ConsensusAlgorithm.UnitTests.Services
             response.Term.Should().Be(1);
             _repoMock.Verify(r => r.SetCurrentTerm(It.IsAny<int>()), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntries_WhenTermFromRequest_EqualCurrentTerm_DoNotUpdateCurrentTerm_StepDown(ServerStatus state)
+        public void AppendEntries_WhenTermFromRequest_EqualCurrentTerm_DoNotUpdateCurrentTerm_ResetTimeout_StepDown(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             var request = new AppendEntriesRequest
             {
                 LeaderId = _otherServer1.Object.Id,
@@ -269,17 +267,17 @@ namespace ConsensusAlgorithm.UnitTests.Services
             result.Term.Should().Be(1);
             _repoMock.Verify(r => r.SetCurrentTerm(It.IsAny<int>()), Times.Never);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [TestCase(ServerStatus.Leader)]
         [TestCase(ServerStatus.Candidate)]
         [TestCase(ServerStatus.Follower)]
-        public void AppendEntries_WhenPrevLogTermFromRequest_NotEqualLocalPrevLogTerm_IgnoreRequest(ServerStatus state)
+        public void AppendEntries_WhenPrevLogTermFromRequest_NotEqualLocalPrevLogTerm_ResetTimeout_IgnoreRequest(ServerStatus state)
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             var request = new AppendEntriesRequest
             {
                 LeaderId = _otherServer1.Object.Id,
@@ -301,6 +299,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             result.Success.Should().BeFalse();
             result.Term.Should().Be(2);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [TestCase(ServerStatus.Leader)]
@@ -311,7 +310,6 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             var request = new AppendEntriesRequest
             {
                 LeaderId = _otherServer1.Object.Id,
@@ -335,6 +333,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
             _repoMock.Verify(r => r.AppendLogEntry(It.IsAny<LogEntity>()), Times.Exactly(2));
             _stateMachineMock.Verify(r => r.Apply(It.IsAny<string>()), Times.Exactly(2));
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         #endregion AppendEntries
@@ -386,12 +385,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
         }
 
         [Test]
-        public void RequestVote_WhenServerAlreadyVoted_IgnoreVoteRequest()
+        public void RequestVote_WhenAlreadyVoted_ForDifferentServer_IgnoreVoteRequest()
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
-            _repoMock.Setup(r => r.GetCandidateIdVotedFor(It.IsAny<int>())).Returns(_otherServer1.Object.Id);
-
             var request = new VoteRequest
             {
                 CandidateId = _otherServer1.Object.Id,
@@ -399,6 +396,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 LastLogIndex = -1,
                 LastLogTerm = -1
             };
+            _repoMock.Setup(r => r.GetCandidateIdVotedFor(It.IsAny<int>())).Returns(_otherServer2.Object.Id);
 
             // Act
             var response = _service.RequestVote(request);
@@ -406,6 +404,33 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             response.VoteGranted.Should().BeFalse();
             response.Term.Should().Be(1);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Never);
+        }
+
+        [Test]
+        public void RequestVote_HappyPath_WhenTermsAreEqual_AlreadyVotedForSameServer_VoteAgain()
+        {
+            // Arrange
+            _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
+            var voteRequesterId = _otherServer1.Object.Id;
+            var request = new VoteRequest
+            {
+                CandidateId = voteRequesterId,
+                Term = 1,
+                LastLogIndex = -1,
+                LastLogTerm = -1
+            };
+            _repoMock.Setup(r => r.GetCandidateIdVotedFor(It.IsAny<int>())).Returns(voteRequesterId);
+
+            // Act
+            var response = _service.RequestVote(request);
+
+            // Assert
+            response.VoteGranted.Should().BeTrue();
+            response.Term.Should().Be(1);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(request.CandidateId, request.Term), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [Test]
@@ -413,7 +438,6 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             var appendLogsRequest = new AppendEntriesRequest
             {
                 LeaderId = _otherServer1.Object.Id,
@@ -443,6 +467,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             appendResponse.Success.Should().BeTrue();
             voteResponse.VoteGranted.Should().BeFalse();
             voteResponse.Term.Should().Be(1);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
         }
 
         [Test]
@@ -450,7 +475,6 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
             var appendLogsRequest = new AppendEntriesRequest
             {
                 LeaderId = _otherServer1.Object.Id,
@@ -480,6 +504,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             appendResponse.Success.Should().BeTrue();
             voteResponse.VoteGranted.Should().BeFalse();
             voteResponse.Term.Should().Be(2);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
         }
 
         [Test]
@@ -501,6 +526,8 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             response.VoteGranted.Should().BeTrue();
             response.Term.Should().Be(1);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(request.CandidateId, request.Term), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         #endregion RequestVote
@@ -546,6 +573,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
             _statusMock.VerifySet(s => s.LeaderId = request.LeaderId);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [Test]
@@ -568,6 +596,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Verify(s => s.SetCurrentTerm(It.IsAny<int>()), Times.Never);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower);
             _statusMock.VerifySet(s => s.LeaderId = request.LeaderId);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         #endregion Heartbeat
@@ -575,11 +604,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
         #region IHostedService
 
         [Test]
-        public void StartTest()
+        public void Start_HappyPath()
         {
             // Arrange
             _repoMock.Setup(r => r.GetLogEntries()).Returns(new List<LogEntity>());
-            _timeoutMock.Setup(r => r.GetRandomTimeout()).Returns(Timeout.Infinite);
 
             // Act
             var result = _service.StartAsync(_cts.Token);
@@ -587,16 +615,28 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
             // Assert
             result.Should().Be(Task.CompletedTask);
+            _timeoutMock.Verify(t => t.Initialize(It.IsAny<TimerCallback>(), It.IsAny<TimerCallback>()), Times.Once);
         }
 
         [Test]
-        public void StopTest()
+        public void Stop_HappyPath()
         {
             // Act
             var result = _service.StopAsync(CancellationToken.None);
 
             // Assert
             result.Should().Be(Task.CompletedTask);
+            _timeoutMock.Verify(t => t.StopAll(), Times.Once);
+        }
+
+        [Test]
+        public void Dispose_HappyPath()
+        {
+            // Act
+            _service.Dispose();
+
+            // Assert
+            _timeoutMock.Verify(t => t.Dispose(), Times.Once);
         }
 
         #endregion IHostedService
@@ -614,9 +654,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             ((ConsensusService)_service).RunElection(default);
 
             // Assert
-            _statusMock.VerifySet(s => s.State = ServerStatus.Candidate, Times.Once); // set status as candidate
-            _repoMock.Verify(r => r.SetCurrentTerm(currentTerm + 1), Times.Once); // increment current term
-            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once); // vote for himself
+            _statusMock.VerifySet(s => s.State = ServerStatus.Candidate, Times.Once);
+            _repoMock.Verify(r => r.SetCurrentTerm(currentTerm + 1), Times.Once);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [Test]
@@ -637,6 +678,9 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
+            _repoMock.Verify(r => r.SetCurrentTerm(currentTerm + 1), Times.Once);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [Test]
@@ -655,6 +699,9 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Candidate, Times.Once);
+            _repoMock.Verify(r => r.SetCurrentTerm(currentTerm + 1), Times.Once);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Never);
         }
 
@@ -675,6 +722,8 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 2), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Once);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Never);
         }
 
@@ -697,6 +746,8 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 5), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Once);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Never);
         }
 
@@ -717,6 +768,9 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
+            _repoMock.Verify(r => r.SetCurrentTerm(currentTerm + 1), Times.Once);
+            _repoMock.Verify(r => r.SetCandidateIdVotedFor(_localServerId, currentTerm + 1), Times.Once);
+            _timeoutMock.Verify(t => t.ResetElectionTimeout(), Times.Once);
         }
 
         [Test]
@@ -782,10 +836,12 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Once);
             _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 3), Times.Once);
+            _timeoutMock.Verify(t => t.StopHeartbeatTimer(), Times.Once);
+            _timeoutMock.Verify(t => t.StartElectionTimer(), Times.Once);
         }
 
         [Test]
-        public void SendHeartbeat_FollowersOffline_StayLeader()
+        public void SendHeartbeat_FollowersOffline_StayLeader_BeAMan()
         {
             // Arrange
             const int currentTerm = 5;
