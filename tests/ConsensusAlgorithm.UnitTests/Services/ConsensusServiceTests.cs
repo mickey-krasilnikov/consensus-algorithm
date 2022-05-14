@@ -20,7 +20,7 @@ using ConsensusAlgorithm.Core.Services.TimerService;
 namespace ConsensusAlgorithm.UnitTests.Services
 {
     [TestFixture]
-    public class ConsensusServiceTests : TestBase
+    public class ConsensusServiceTests
     {
         private readonly CancellationTokenSource _cts = new();
         private readonly string _localServerId = "local_server";
