@@ -8,10 +8,8 @@ using ConsensusAlgorithm.Core.StateMachine;
 using ConsensusAlgorithm.Core.Services.ServerStatusService;
 using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.DTO.AppendEntriesExternal;
-using System.Runtime.CompilerServices;
 using ConsensusAlgorithm.Core.Services.TimerService;
 
-[assembly: InternalsVisibleTo("ConsensusAlgorithm.UnitTests")]
 namespace ConsensusAlgorithm.Core.Services.ConsensusService
 {
     public class ConsensusService : IConsensusService
@@ -25,7 +23,6 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         private readonly object _runElectionMaxTermLock = new();
         private readonly object _sendHeartbeatMaxTermLock = new();
         private IList<LogEntry> _logs = new List<LogEntry>();
-
 
         public ConsensusService(
             IConsensusRepository repo,
@@ -74,7 +71,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 }
 
                 var serversAppendedEntries = 1;
-                Parallel.ForEach(_otherServers, async s =>
+                var tasks = _otherServers.Select(async s =>
                 {
                     var response = await s.AppendEntriesAsync(new AppendEntriesRequest
                     {
@@ -87,6 +84,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                     });
                     if (response.Success) Interlocked.Increment(ref serversAppendedEntries);
                 });
+                await Task.WhenAll(tasks);
                 return new AppendEntriesExternalResponse { Success = true, Term = currentTerm };
             }
         }
@@ -214,7 +212,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         {
             _logger.LogInformation("Consensus Server running.");
             _logs = _repo.GetLogEntries().ToLogEntries();
-            _timerService.Initialize(RunElection, SendHeartbeat);
+            _timerService.Initialize(RunElectionAsync, SendHeartbeatAsync);
             return Task.CompletedTask;
         }
 
@@ -232,7 +230,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
 
         #endregion IHostedService implementation
 
-        internal void RunElection(object? state)
+        internal async void RunElectionAsync(object? state)
         {
             // Follower -> Candidate
             _status.State = ServerStatus.Candidate;
@@ -250,7 +248,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             _timerService.ResetElectionTimeout();
 
             // send request vote to all other servers
-            Parallel.ForEach(_otherServers, async s =>
+            var tasks = _otherServers.Select(async s =>
             {
                 var lastLog = _logs.LastOrDefault();
                 var lastLogIndex = lastLog != null ? lastLog.Index : -1;
@@ -276,6 +274,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                     if (response.VoteGranted) Interlocked.Increment(ref votes);
                 }
             });
+            await Task.WhenAll(tasks);
 
             if (maxTermFromResponses > currentTerm)
             {
@@ -291,13 +290,13 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             }
         }
 
-        internal void SendHeartbeat(object? state)
+        internal async void SendHeartbeatAsync(object? state)
         {
             var currentTerm = _repo.GetCurrentTerm();
             var maxTermFromResponses = currentTerm;
 
             // send heartbeat to all other servers
-            Parallel.ForEach(_otherServers, async s =>
+            var tasks = _otherServers.Select(async s =>
             {
                 var response = await s.SendHeartbeatAsync(new HeartbeatRequest
                 {
@@ -312,6 +311,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                     }
                 }
             });
+            await Task.WhenAll(tasks);
 
             if (maxTermFromResponses > currentTerm)
             {

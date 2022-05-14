@@ -16,5 +16,7 @@ namespace ConsensusAlgorithm.Core.ApiClient
 		Task<VoteResponse?> RequestVoteAsync(VoteRequest request);
 
 		Task<HeartbeatResponse> SendHeartbeatAsync(HeartbeatRequest request);
-	}
+
+        Task<bool> HealthCheckAsync();
+    }
 }

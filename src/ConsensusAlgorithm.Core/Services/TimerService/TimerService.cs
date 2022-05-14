@@ -8,10 +8,9 @@
         private Timer _electionTimer = null!;
         private Timer _heartbeatTimer = null!;
         private int _electionTimeout;
-        private bool _isInitialized = false;
+        private bool _isInitialized;
 
         private readonly Random _rnd = new();
-
 
         public void Initialize(TimerCallback electionCallback, TimerCallback sendHeartbeatCallback)
         {
@@ -47,7 +46,7 @@
 
         public void ResetElectionTimeout()
         {
-            _electionTimer?.Change(_electionTimeout, Timeout.Infinite);
+            //_electionTimer?.Change(_electionTimeout, Timeout.Infinite);
         }
 
         public void StopElectionTimer()

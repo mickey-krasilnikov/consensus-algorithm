@@ -22,3 +22,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Making the Program class public using a partial class declaration
+// for using in Integration Tests
+public partial class Program { }

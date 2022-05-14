@@ -13,6 +13,7 @@ namespace ConsensusAlgorithm.Core.ApiClient
         public const string AppendEntriesUrl = "appendEntries";
         public const string AppendEntriesExternalUrl = "appendEntriesExternal";
         public const string HeartbeatUrl = "heartbeat";
+        public const string HealthCheckUrl = "healthz";
 
         private readonly string _baseUrl;
         private readonly HttpClient _client = new();
@@ -46,6 +47,11 @@ namespace ConsensusAlgorithm.Core.ApiClient
         {
             return await PostRequest<HeartbeatRequest, HeartbeatResponse>(request, HeartbeatUrl)
                 ?? new HeartbeatResponse { Success = false };
+        }
+
+        public async Task<bool> HealthCheckAsync()
+        {
+            return (await _client.GetAsync($"{_baseUrl}/{HealthCheckUrl}")).IsSuccessStatusCode;
         }
 
         private async Task<TResponse?> PostRequest<TRequest, TResponse>(TRequest request, string url)

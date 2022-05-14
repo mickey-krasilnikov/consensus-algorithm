@@ -651,7 +651,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
 
             // Act
-            ((ConsensusService)_service).RunElection(default);
+            ((ConsensusService)_service).RunElectionAsync(default);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Candidate, Times.Once);
@@ -674,7 +674,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
 
             // Act
-            ((ConsensusService)_service).RunElection(default);
+            ((ConsensusService)_service).RunElectionAsync(default);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
@@ -695,7 +695,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
 
             // Act
-            ((ConsensusService)_service).RunElection(default);
+            ((ConsensusService)_service).RunElectionAsync(default);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Candidate, Times.Once);
@@ -717,7 +717,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
 
             // Act
-            ((ConsensusService)_service).RunElection(default);
+            ((ConsensusService)_service).RunElectionAsync(default);
 
             // Assert
             _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 2), Times.Once);
@@ -741,7 +741,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 .ReturnsAsync(new VoteResponse { VoteGranted = false, Term = currentTerm + 1 });
 
             // Act
-            ((ConsensusService)_service).RunElection(default);
+            ((ConsensusService)_service).RunElectionAsync(default);
 
             // Assert
             _repoMock.Verify(s => s.SetCurrentTerm(currentTerm + 5), Times.Once);
@@ -764,7 +764,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
 
             // Act
-            ((ConsensusService)_service).RunElection(default);
+            ((ConsensusService)_service).RunElectionAsync(default);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
@@ -785,7 +785,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
 
             // Act
-            ((ConsensusService)_service).RunElection(default);
+            ((ConsensusService)_service).RunElectionAsync(default);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Leader, Times.Once);
@@ -810,7 +810,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
 
             // Act
-            ((ConsensusService)_service).SendHeartbeat(null);
+            ((ConsensusService)_service).SendHeartbeatAsync(null);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Never);
@@ -831,7 +831,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm + 2 });
 
             // Act
-            ((ConsensusService)_service).SendHeartbeat(null);
+            ((ConsensusService)_service).SendHeartbeatAsync(null);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Once);
@@ -854,7 +854,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 .ReturnsAsync(new HeartbeatResponse { Success = false });
 
             // Act
-            ((ConsensusService)_service).SendHeartbeat(null);
+            ((ConsensusService)_service).SendHeartbeatAsync(null);
 
             // Assert
             _statusMock.VerifySet(s => s.State = ServerStatus.Follower, Times.Never);

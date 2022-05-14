@@ -16,11 +16,20 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		private readonly ILogger<ConsensusController> _logger;
 		private readonly IConsensusService _consensusService;
 
-		public ConsensusController(ILogger<ConsensusController> logger, ConsensusService consensusService)
+		public ConsensusController(ILogger<ConsensusController> logger, IConsensusService consensusService)
 		{
 			_logger = logger;
 			_consensusService = consensusService;
 		}
+
+        /// <summary>
+        /// Health check endpoint
+        /// </summary>
+        [HttpGet("healthz")]
+        public IActionResult HealthCheck()
+        {
+            return Ok();
+        }
 
         /// <summary>
         /// Endpoint to send commands to the leader from outside of the consensus cluster
@@ -67,6 +76,6 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		{
 			var response = _consensusService.Heartbeat(request);
 			return response.Success ? Ok(response) : BadRequest(response);
-		}
-	}
+        }
+    }
 }
