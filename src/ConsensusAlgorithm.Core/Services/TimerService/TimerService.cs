@@ -2,22 +2,18 @@
 {
     public class TimerService : ITimerService
     {
-        private const int _electionTimeoutMin = 1000;
-        private const int _electionTimeoutMax = 5000;
-
         private Timer _electionTimer = null!;
         private Timer _heartbeatTimer = null!;
-        private int _electionTimeout;
         private bool _isInitialized;
+        private long _averageBroadcast;
 
         private readonly Random _rnd = new();
 
         public void Initialize(TimerCallback electionCallback, TimerCallback sendHeartbeatCallback)
         {
-            _electionTimeout = GetRandomElectionTimeout();
             if (_isInitialized) StopAll();
 
-            _electionTimer = new Timer(electionCallback, null, _electionTimeout, Timeout.Infinite);
+            _electionTimer = new Timer(electionCallback, null, GetRandomElectionTimeout(), Timeout.Infinite);
             _heartbeatTimer = new Timer(sendHeartbeatCallback, null, Timeout.Infinite, 0);
             _isInitialized = true;
         }
@@ -30,7 +26,7 @@
 
         public void StartHeartbeatTimer()
         {
-            _heartbeatTimer?.Change(0, _electionTimeout / 2);
+            _heartbeatTimer?.Change(0, GetRandomElectionTimeout() / 2);
         }
 
         public void StopHeartbeatTimer()
@@ -40,13 +36,12 @@
 
         public void StartElectionTimer()
         {
-            _electionTimeout = GetRandomElectionTimeout();
-            _electionTimer?.Change(_electionTimeout, Timeout.Infinite);
+            _electionTimer?.Change(GetRandomElectionTimeout(), Timeout.Infinite);
         }
 
         public void ResetElectionTimeout()
         {
-            //_electionTimer?.Change(_electionTimeout, Timeout.Infinite);
+            _electionTimer?.Change(GetRandomElectionTimeout(), Timeout.Infinite);
         }
 
         public void StopElectionTimer()
@@ -54,15 +49,24 @@
             _electionTimer?.Change(Timeout.Infinite, 0);
         }
 
-        private int GetRandomElectionTimeout()
+        private long GetRandomElectionTimeout()
         {
-            return _rnd.Next(_electionTimeoutMin, _electionTimeoutMax);
+            return _averageBroadcast != default 
+                ? _rnd.NextInt64(_averageBroadcast, 2 * _averageBroadcast) 
+                : _rnd.NextInt64(100, 500);
         }
 
         public void Dispose()
         {
             _electionTimer?.Dispose();
             _heartbeatTimer?.Dispose();
+        }
+
+        public void SubmitBroadcastLatency(long elapsedMilliseconds)
+        {
+            _averageBroadcast = _averageBroadcast != default
+                ? (_averageBroadcast + elapsedMilliseconds) / 2
+                : elapsedMilliseconds;
         }
     }
 }

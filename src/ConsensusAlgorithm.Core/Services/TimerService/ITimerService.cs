@@ -15,5 +15,7 @@
         void ResetElectionTimeout();
 
         void StopElectionTimer();
+
+        void SubmitBroadcastLatency(long elapsedMilliseconds);
     }
 }

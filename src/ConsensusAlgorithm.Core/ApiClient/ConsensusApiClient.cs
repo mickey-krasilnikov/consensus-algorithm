@@ -1,7 +1,9 @@
+using ConsensusAlgorithm.Core.Services.TimerService;
 using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.DTO.AppendEntriesExternal;
 using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.DTO.RequestVote;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -17,12 +19,15 @@ namespace ConsensusAlgorithm.Core.ApiClient
 
         private readonly Uri _baseUrl;
         private readonly HttpClient _client = new();
+        private readonly ITimerService _timerService;
+        private Stopwatch _stopwatch = new Stopwatch();
 
         public string Id { get; }
 
-        public ConsensusApiClient(string serverId, string baseURL)
+        public ConsensusApiClient(string serverId, string baseURL, ITimerService timerService)
         {
             Id = serverId;
+            _timerService = timerService;
             _baseUrl = new Uri(baseURL);
         }
 
@@ -59,7 +64,10 @@ namespace ConsensusAlgorithm.Core.ApiClient
             try
             {
                 var data = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+                _stopwatch.Restart();
                 var response = await _client.PostAsync(new Uri(_baseUrl, url), data);
+                _stopwatch.Stop();
+                _timerService.SubmitBroadcastLatency(_stopwatch.ElapsedMilliseconds);
                 var responseString = await response.Content.ReadAsStringAsync();
                 return JsonSerializer.Deserialize<TResponse>(responseString);
             }

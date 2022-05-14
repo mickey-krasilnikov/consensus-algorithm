@@ -23,9 +23,10 @@ namespace ConsensusAlgorithm.Core.Extensions
             services.AddSingleton<IList<IConsensusApiClient>>(s =>
             {
                 var config = s.GetRequiredService<ConsensusClusterConfig>();
+                var timerService = s.GetRequiredService<ITimerService>();
                 return config!.ServerList
                     .Where(s => s.Key != config!.CurrentServerId)
-                    .Select(s => (IConsensusApiClient)new ConsensusApiClient(s.Key, s.Value))
+                    .Select(s => (IConsensusApiClient)new ConsensusApiClient(s.Key, s.Value, timerService))
                     .ToList();
             });
 
