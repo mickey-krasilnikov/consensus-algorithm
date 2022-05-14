@@ -9,13 +9,13 @@ namespace ConsensusAlgorithm.Core.ApiClient
 {
     public class ConsensusApiClient : IConsensusApiClient
     {
-        public const string RequestVoteUrl = "requestVote";
-        public const string AppendEntriesUrl = "appendEntries";
-        public const string AppendEntriesExternalUrl = "appendEntriesExternal";
-        public const string HeartbeatUrl = "heartbeat";
-        public const string HealthCheckUrl = "healthz";
+        public const string RequestVoteUrl = "api/consensus/requestVote";
+        public const string AppendEntriesUrl = "api/consensus/appendEntries";
+        public const string AppendEntriesExternalUrl = "api/consensus/appendEntriesExternal";
+        public const string HeartbeatUrl = "api/consensus/heartbeat";
+        public const string HealthCheckUrl = "api/maintenance/healthz";
 
-        private readonly string _baseUrl;
+        private readonly Uri _baseUrl;
         private readonly HttpClient _client = new();
 
         public string Id { get; }
@@ -23,7 +23,7 @@ namespace ConsensusAlgorithm.Core.ApiClient
         public ConsensusApiClient(string serverId, string baseURL)
         {
             Id = serverId;
-            _baseUrl = baseURL;
+            _baseUrl = new Uri(baseURL);
         }
 
         public async Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)
@@ -51,7 +51,7 @@ namespace ConsensusAlgorithm.Core.ApiClient
 
         public async Task<bool> HealthCheckAsync()
         {
-            return (await _client.GetAsync($"{_baseUrl}/{HealthCheckUrl}")).IsSuccessStatusCode;
+            return (await _client.GetAsync(new Uri(_baseUrl, HealthCheckUrl))).IsSuccessStatusCode;
         }
 
         private async Task<TResponse?> PostRequest<TRequest, TResponse>(TRequest request, string url)
@@ -59,7 +59,7 @@ namespace ConsensusAlgorithm.Core.ApiClient
             try
             {
                 var data = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
-                var response = await _client.PostAsync($"{_baseUrl}/{url}", data);
+                var response = await _client.PostAsync(new Uri(_baseUrl, url), data);
                 var responseString = await response.Content.ReadAsStringAsync();
                 return JsonSerializer.Deserialize<TResponse>(responseString);
             }

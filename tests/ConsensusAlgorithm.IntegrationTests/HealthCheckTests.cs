@@ -6,7 +6,7 @@ namespace ConsensusAlgorithm.IntegrationTests
     [TestFixture]
     public class HealthCheckTests : IntegrationTestBase
     {
-        [TestCase("/api/consensus/healthz")]
+        [TestCase("/api/maintenance/healthz")]
         public async Task HealthCheckTest(string url)
         {
             // Arrange
