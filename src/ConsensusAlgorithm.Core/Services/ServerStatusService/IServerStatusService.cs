@@ -6,8 +6,6 @@
 
         public string? LeaderId { get; set; }
 
-        public bool HasLeader { get; }
-
         public bool IsLeader { get; }
 
         ServerStatus State { get; set; }

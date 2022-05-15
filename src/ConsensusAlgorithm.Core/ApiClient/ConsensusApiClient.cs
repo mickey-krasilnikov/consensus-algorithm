@@ -1,3 +1,4 @@
+using ConsensusAlgorithm.Core.Configuration;
 using ConsensusAlgorithm.Core.Services.TimerService;
 using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.DTO.AppendEntriesExternal;
@@ -15,60 +16,71 @@ namespace ConsensusAlgorithm.Core.ApiClient
         public const string AppendEntriesUrl = "api/consensus/appendEntries";
         public const string AppendEntriesExternalUrl = "api/consensus/appendEntriesExternal";
         public const string HeartbeatUrl = "api/consensus/heartbeat";
-        public const string HealthCheckUrl = "api/maintenance/healthz";
 
-        private readonly Uri _baseUrl;
-        private readonly HttpClient _client = new();
+        private readonly HttpClient _client;
+        private readonly Dictionary<string, string> _serverList;
         private readonly ITimerService _timerService;
-        private Stopwatch _stopwatch = new Stopwatch();
+        private readonly Stopwatch _stopwatch = new Stopwatch();
 
-        public string Id { get; }
-
-        public ConsensusApiClient(string serverId, string baseURL, ITimerService timerService)
+        public ConsensusApiClient(HttpClient httpClient, ConsensusClusterConfig config, ITimerService timerService)
         {
-            Id = serverId;
+            _client = httpClient;
+            _serverList = config.ServerList;
             _timerService = timerService;
-            _baseUrl = new Uri(baseURL);
         }
 
-        public async Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest request)
+        public async Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(
+            string serverId,
+            AppendEntriesExternalRequest request,
+            CancellationToken? cancellationToken = null)
         {
-            return await PostRequest<AppendEntriesExternalRequest, AppendEntriesExternalResponse>(request, AppendEntriesExternalUrl)
-                ?? new AppendEntriesExternalResponse { Success = false };
+            return await PostRequest<AppendEntriesExternalRequest, AppendEntriesExternalResponse>(request,
+                    new Uri(new Uri(_serverList[serverId]), AppendEntriesExternalUrl), cancellationToken ?? CancellationToken.None)
+                ?? new () { Success = false };
         }
 
-        public async Task<AppendEntriesResponse> AppendEntriesAsync(AppendEntriesRequest request)
+        public async Task<AppendEntriesResponse> AppendEntriesAsync(
+            string serverId,
+            AppendEntriesRequest request,
+            CancellationToken? cancellationToken = null)
         {
-            return await PostRequest<AppendEntriesRequest, AppendEntriesResponse>(request, AppendEntriesUrl)
-                ?? new AppendEntriesResponse { Success = false };
+            return await PostRequest<AppendEntriesRequest, AppendEntriesResponse>(request,
+                    new Uri(new Uri(_serverList[serverId]), AppendEntriesUrl), cancellationToken ?? CancellationToken.None)
+                ?? new () { Success = false };
         }
 
-        public async Task<VoteResponse?> RequestVoteAsync(VoteRequest request)
+        public async Task<VoteResponse?> RequestVoteAsync(
+            string serverId,
+            VoteRequest request,
+            CancellationToken? cancellationToken = null)
         {
-            return await PostRequest<VoteRequest, VoteResponse>(request, RequestVoteUrl);
+            return await PostRequest<VoteRequest, VoteResponse>(request,
+                new Uri(new Uri(_serverList[serverId]), RequestVoteUrl), cancellationToken ?? CancellationToken.None);
         }
 
-        public async Task<HeartbeatResponse> SendHeartbeatAsync(HeartbeatRequest request)
+        public async Task<HeartbeatResponse> SendHeartbeatAsync(
+            string serverId,
+            HeartbeatRequest request,
+            CancellationToken? cancellationToken = null)
         {
-            return await PostRequest<HeartbeatRequest, HeartbeatResponse>(request, HeartbeatUrl)
-                ?? new HeartbeatResponse { Success = false };
+            return await PostRequest<HeartbeatRequest, HeartbeatResponse>(request,
+                    new Uri(new Uri(_serverList[serverId]), HeartbeatUrl), cancellationToken ?? CancellationToken.None)
+                ?? new () { Success = false };
         }
 
-        public async Task<bool> HealthCheckAsync()
-        {
-            return (await _client.GetAsync(new Uri(_baseUrl, HealthCheckUrl))).IsSuccessStatusCode;
-        }
-
-        private async Task<TResponse?> PostRequest<TRequest, TResponse>(TRequest request, string url)
+        private async Task<TResponse?> PostRequest<TRequest, TResponse>(
+            TRequest request,
+            Uri url,
+            CancellationToken cancellationToken)
         {
             try
             {
                 var data = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
                 _stopwatch.Restart();
-                var response = await _client.PostAsync(new Uri(_baseUrl, url), data);
+                var response = await _client.PostAsync(url, data, cancellationToken);
                 _stopwatch.Stop();
                 _timerService.SubmitBroadcastLatency(_stopwatch.ElapsedMilliseconds);
-                var responseString = await response.Content.ReadAsStringAsync();
+                var responseString = await response.Content.ReadAsStringAsync(cancellationToken);
                 return JsonSerializer.Deserialize<TResponse>(responseString);
             }
             catch (Exception)

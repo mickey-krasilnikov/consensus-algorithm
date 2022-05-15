@@ -8,8 +8,6 @@
 
         public string? LeaderId { get; set; }
 
-        public bool HasLeader { get => LeaderId != null; }
-
         public bool IsLeader { get => State == ServerStatus.Leader; }
 
         public ServerStatus State

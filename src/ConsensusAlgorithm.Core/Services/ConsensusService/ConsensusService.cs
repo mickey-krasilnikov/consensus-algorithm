@@ -9,6 +9,7 @@ using ConsensusAlgorithm.Core.Services.ServerStatusService;
 using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.DTO.AppendEntriesExternal;
 using ConsensusAlgorithm.Core.Services.TimerService;
+using ConsensusAlgorithm.Core.Configuration;
 
 namespace ConsensusAlgorithm.Core.Services.ConsensusService
 {
@@ -17,9 +18,10 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
         private readonly IConsensusRepository _repo;
         private readonly IStateMachine _stateMachine;
         private readonly ILogger<ConsensusService> _logger;
-        private readonly IList<IConsensusApiClient> _otherServers;
+        private readonly IConsensusApiClient _apiClient;
         private readonly ITimerService _timerService;
         private readonly IServerStatusService _status;
+        private readonly List<string> _otherServers;
         private readonly object _runElectionMaxTermLock = new();
         private readonly object _sendHeartbeatMaxTermLock = new();
         private IList<LogEntry> _logs = new List<LogEntry>();
@@ -28,16 +30,18 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             IConsensusRepository repo,
             IStateMachine stateMachine,
             ILogger<ConsensusService> logger,
-            IList<IConsensusApiClient> otherServers,
+            IConsensusApiClient apiClient,
             ITimerService timerService,
-            IServerStatusService statusService)
+            IServerStatusService statusService,
+            ConsensusClusterConfig config)
         {
             _repo = repo;
             _stateMachine = stateMachine;
             _logger = logger;
-            _otherServers = otherServers;
+            _apiClient = apiClient;
             _timerService = timerService;
             _status = statusService;
+            _otherServers = config.ServerList.Where(s => s.Key != config.CurrentServerId).Select(s => s.Key).ToList();
         }
 
         public async Task<AppendEntriesExternalResponse> AppendEntriesExternalAsync(AppendEntriesExternalRequest appendRequest)
@@ -45,8 +49,8 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             var currentTerm = _repo.GetCurrentTerm();
             if (!_status.IsLeader)
             {
-                return _status.HasLeader
-                   ? await _otherServers.First(s => s.Id == _status.LeaderId).AppendEntriesExternalAsync(appendRequest)
+                return _status.LeaderId != null
+                   ? await _apiClient.AppendEntriesExternalAsync(_status.LeaderId, appendRequest)
                    : new AppendEntriesExternalResponse { Success = false, Term = currentTerm };
             }
             else
@@ -73,7 +77,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 var serversAppendedEntries = 1;
                 var tasks = _otherServers.Select(async s =>
                 {
-                    var response = await s.AppendEntriesAsync(new AppendEntriesRequest
+                    var response = await _apiClient.AppendEntriesAsync(s, new AppendEntriesRequest
                     {
                         LeaderId = _status.Id,
                         Term = currentTerm,
@@ -254,7 +258,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
                 var lastLogIndex = lastLog != null ? lastLog.Index : -1;
                 var lastLogTerm = lastLog != null ? lastLog.Term : -1;
 
-                var response = await s.RequestVoteAsync(new VoteRequest
+                var response = await _apiClient.RequestVoteAsync(s, new VoteRequest
                 {
                     CandidateId = _status.Id,
                     Term = currentTerm,
@@ -298,7 +302,7 @@ namespace ConsensusAlgorithm.Core.Services.ConsensusService
             // send heartbeat to all other servers
             var tasks = _otherServers.Select(async s =>
             {
-                var response = await s.SendHeartbeatAsync(new HeartbeatRequest
+                var response = await _apiClient.SendHeartbeatAsync(s, new HeartbeatRequest
                 {
                     LeaderId = _status.Id,
                     Term = currentTerm

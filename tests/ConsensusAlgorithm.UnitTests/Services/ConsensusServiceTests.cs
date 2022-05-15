@@ -16,6 +16,7 @@ using ConsensusAlgorithm.DTO.AppendEntries;
 using ConsensusAlgorithm.DTO.RequestVote;
 using ConsensusAlgorithm.DTO.Heartbeat;
 using ConsensusAlgorithm.Core.Services.TimerService;
+using ConsensusAlgorithm.Core.Configuration;
 
 namespace ConsensusAlgorithm.UnitTests.Services
 {
@@ -24,16 +25,18 @@ namespace ConsensusAlgorithm.UnitTests.Services
     {
         private readonly CancellationTokenSource _cts = new();
         private readonly string _localServerId = "local_server";
+        private readonly string _remoteServer1Id = "remote_server_1";
+        private readonly string _remoteServer2Id = "remote_server_2";
+        private readonly string _remoteServer3Id = "remote_server_3";
+
         private Mock<IConsensusRepository> _repoMock = null!;
         private Mock<IStateMachine> _stateMachineMock = null!;
         private Mock<ILogger<ConsensusService>> _loggerMock = null!;
-        private Mock<IConsensusApiClient> _otherServer1 = null!;
-        private Mock<IConsensusApiClient> _otherServer2 = null!;
-        private Mock<IConsensusApiClient> _otherServer3 = null!;
+        private Mock<IConsensusApiClient> _apiClient = null!;
         private Mock<ITimerService> _timeoutMock = null!;
         private Mock<IServerStatusService> _statusMock = null!;
+        private ConsensusClusterConfig _config = null!;
         private IConsensusService _service = null!;
-        private IList<IConsensusApiClient> _otherServers = null!;
 
         [SetUp]
         public void Setup()
@@ -42,23 +45,24 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _stateMachineMock = new Mock<IStateMachine>();
             _loggerMock = new Mock<ILogger<ConsensusService>>();
 
-            _otherServer1 = new Mock<IConsensusApiClient>();
-            _otherServer1.SetupGet(s => s.Id).Returns("remote_server_1");
-            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>())).ReturnsAsync(new HeartbeatResponse { Success = true });
+            var anyHeartbeatReq = It.IsAny<HeartbeatRequest>();
+            var successHeartbeatResponse = new HeartbeatResponse { Success = true };
 
-            _otherServer2 = new Mock<IConsensusApiClient>();
-            _otherServer2.SetupGet(s => s.Id).Returns("remote_server_2");
-            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>())).ReturnsAsync(new HeartbeatResponse { Success = true });
+            _apiClient = new Mock<IConsensusApiClient>();
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer1Id, anyHeartbeatReq, null)).ReturnsAsync(successHeartbeatResponse);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer2Id, anyHeartbeatReq, null)).ReturnsAsync(successHeartbeatResponse);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer3Id, anyHeartbeatReq, null)).ReturnsAsync(successHeartbeatResponse);
 
-            _otherServer3 = new Mock<IConsensusApiClient>();
-            _otherServer3.SetupGet(s => s.Id).Returns("remote_server_3");
-            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>())).ReturnsAsync(new HeartbeatResponse { Success = true });
-
-            _otherServers = new List<IConsensusApiClient>
+            _config = new ConsensusClusterConfig
             {
-                _otherServer1.Object,
-                _otherServer2.Object,
-                _otherServer3.Object,
+                CurrentServerId = _localServerId,
+                ServerList = new Dictionary<string, string>
+                {
+                    { _localServerId, "localServerBaseUrl" },
+                    { _remoteServer1Id, "remoteServer1BaseUrl" },
+                    { _remoteServer2Id, "remoteServer2BaseUrl" },
+                    { _remoteServer3Id, "remoteServer3BaseUrl" },
+                }
             };
 
             _timeoutMock = new Mock<ITimerService>();
@@ -70,9 +74,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
                 _repoMock.Object,
                 _stateMachineMock.Object,
                 _loggerMock.Object,
-                _otherServers,
+                _apiClient.Object,
                 _timeoutMock.Object,
-                _statusMock.Object
+                _statusMock.Object,
+                _config
             );
         }
 
@@ -86,7 +91,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.SetupProperty(s => s.State, state);
             _statusMock.SetupProperty(s => s.LeaderId, null);
             _statusMock.SetupGet(s => s.IsLeader).Returns(false);
-            _statusMock.SetupGet(s => s.HasLeader).Returns(false);
+            _statusMock.SetupGet(s => s.LeaderId).Returns((string?)null!);
             var request = new AppendEntriesExternalRequest
             {
                 Commands = new List<string> { "CLEAR X X", "SET X X" }
@@ -98,13 +103,13 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Assert
             result.Success.Should().BeFalse();
             // checking that request is not forwarded
-            _otherServer1.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
-            _otherServer2.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
-            _otherServer3.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer1Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer2Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer3Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
             //checking that it's not acting as a leader
-            _otherServer1.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer2.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer3.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer1Id, It.IsAny<AppendEntriesRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer2Id, It.IsAny<AppendEntriesRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer3Id, It.IsAny<AppendEntriesRequest>(), null), Times.Never());
         }
 
         [TestCase(ServerStatus.Candidate)]
@@ -113,11 +118,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             _statusMock.SetupProperty(s => s.State, state);
-            _statusMock.SetupProperty(s => s.LeaderId, _otherServer1.Object.Id);
+            _statusMock.SetupProperty(s => s.LeaderId, _remoteServer1Id);
             _statusMock.SetupGet(s => s.IsLeader).Returns(false);
-            _statusMock.SetupGet(s => s.HasLeader).Returns(true);
-            _otherServer1
-                .Setup(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()))
+            _apiClient
+                .Setup(s => s.AppendEntriesExternalAsync(_remoteServer1Id, It.IsAny<AppendEntriesExternalRequest>(), null))
                 .ReturnsAsync(new AppendEntriesExternalResponse { Success = true });
             var request = new AppendEntriesExternalRequest
             {
@@ -129,14 +133,14 @@ namespace ConsensusAlgorithm.UnitTests.Services
 
             // Assert
             result.Success.Should().BeTrue();
-            // checking that it has been redirected only to leader
-            _otherServer1.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Once());
-            _otherServer2.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
-            _otherServer3.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
+            // checking that request is not forwarded
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer1Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Once());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer2Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer3Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
             //checking that it's not acting as a leader
-            _otherServer1.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer2.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
-            _otherServer3.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer1Id, It.IsAny<AppendEntriesRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer2Id, It.IsAny<AppendEntriesRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer3Id, It.IsAny<AppendEntriesRequest>(), null), Times.Never());
         }
 
         [TestCase(ServerStatus.Leader)]
@@ -146,15 +150,12 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _statusMock.SetupProperty(s => s.State, state);
             _statusMock.SetupProperty(s => s.LeaderId, _statusMock.Object.Id);
             _statusMock.SetupGet(s => s.IsLeader).Returns(true);
-            _statusMock.SetupGet(s => s.HasLeader).Returns(true);
-            var otherServersResponse = new AppendEntriesResponse { Success = true, Term = 0 };
-            _otherServer1.Setup(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>())).ReturnsAsync(otherServersResponse);
-            _otherServer2.Setup(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>())).ReturnsAsync(otherServersResponse);
-            _otherServer3.Setup(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>())).ReturnsAsync(otherServersResponse);
-            var request = new AppendEntriesExternalRequest
-            {
-                Commands = new List<string> { "CLEAR X X", "SET X X" }
-            };
+            _statusMock.SetupGet(s => s.LeaderId).Returns(default(string?));
+            var successIntResponse = new AppendEntriesResponse { Success = true, Term = 0 };
+            _apiClient.Setup(s => s.AppendEntriesAsync(_remoteServer1Id, It.IsAny<AppendEntriesRequest>(), null)).ReturnsAsync(successIntResponse);
+            _apiClient.Setup(s => s.AppendEntriesAsync(_remoteServer2Id, It.IsAny<AppendEntriesRequest>(), null)).ReturnsAsync(successIntResponse);
+            _apiClient.Setup(s => s.AppendEntriesAsync(_remoteServer3Id, It.IsAny<AppendEntriesRequest>(), null)).ReturnsAsync(successIntResponse);
+            var request = new AppendEntriesExternalRequest { Commands = new List<string> { "CLEAR X X", "SET X X" } };
 
             // Act
             var result = await _service.AppendEntriesExternalAsync(request);
@@ -164,16 +165,14 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Verify(r => r.AppendLogEntry(It.IsAny<LogEntity>()), Times.Exactly(2));
             _stateMachineMock.Verify(r => r.Apply(It.IsAny<string>()), Times.Exactly(2));
             // checking that request is not forwarded
-            _otherServer1.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
-            _otherServer2.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
-            _otherServer3.Verify(s => s.AppendEntriesExternalAsync(It.IsAny<AppendEntriesExternalRequest>()), Times.Never());
-            // checking that it distribute the logs between followers
-            _otherServer1.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
-            _otherServer2.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
-            _otherServer3.Verify(s => s.AppendEntriesAsync(It.IsAny<AppendEntriesRequest>()), Times.Once());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer1Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer2Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
+            _apiClient.Verify(s => s.AppendEntriesExternalAsync(_remoteServer3Id, It.IsAny<AppendEntriesExternalRequest>(), null), Times.Never());
+            //checking that it's not acting as a leader
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer1Id, It.IsAny<AppendEntriesRequest>(), null), Times.Once());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer2Id, It.IsAny<AppendEntriesRequest>(), null), Times.Once());
+            _apiClient.Verify(s => s.AppendEntriesAsync(_remoteServer3Id, It.IsAny<AppendEntriesRequest>(), null), Times.Once());
         }
-
-        //TODO: AppendEntriesExternal OtherServersReturnTermBiggerThenCurrent
 
         #endregion AppendEntriesExternal
 
@@ -186,7 +185,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new AppendEntriesRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 0,
                 CommitIndex = -1,
                 PrevLogIndex = -1,
@@ -216,7 +215,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(0);
             var request = new AppendEntriesRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 1,
                 CommitIndex = -1,
                 PrevLogIndex = -1,
@@ -248,7 +247,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new AppendEntriesRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 1,
                 CommitIndex = -1,
                 PrevLogIndex = -1,
@@ -280,7 +279,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
             var request = new AppendEntriesRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 2,
                 CommitIndex = 2,
                 PrevLogIndex = 2,
@@ -312,7 +311,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new AppendEntriesRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 1,
                 CommitIndex = -1,
                 PrevLogIndex = -1,
@@ -347,7 +346,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
             var request = new VoteRequest
             {
-                CandidateId = _otherServer1.Object.Id,
+                CandidateId = _remoteServer1Id,
                 Term = 1,
                 LastLogIndex = -1,
                 LastLogTerm = -1
@@ -368,7 +367,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new VoteRequest
             {
-                CandidateId = _otherServer1.Object.Id,
+                CandidateId = _remoteServer1Id,
                 Term = 2,
                 LastLogIndex = -1,
                 LastLogTerm = -1
@@ -391,12 +390,12 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new VoteRequest
             {
-                CandidateId = _otherServer1.Object.Id,
+                CandidateId = _remoteServer1Id,
                 Term = 1,
                 LastLogIndex = -1,
                 LastLogTerm = -1
             };
-            _repoMock.Setup(r => r.GetCandidateIdVotedFor(It.IsAny<int>())).Returns(_otherServer2.Object.Id);
+            _repoMock.Setup(r => r.GetCandidateIdVotedFor(It.IsAny<int>())).Returns(_remoteServer2Id);
 
             // Act
             var response = _service.RequestVote(request);
@@ -413,7 +412,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
-            var voteRequesterId = _otherServer1.Object.Id;
+            var voteRequesterId = _remoteServer1Id;
             var request = new VoteRequest
             {
                 CandidateId = voteRequesterId,
@@ -440,7 +439,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var appendLogsRequest = new AppendEntriesRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 1,
                 CommitIndex = -1,
                 PrevLogIndex = -1,
@@ -453,7 +452,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
             var voteRequest = new VoteRequest
             {
-                CandidateId = _otherServer1.Object.Id,
+                CandidateId = _remoteServer1Id,
                 Term = 1,
                 LastLogIndex = -1,
                 LastLogTerm = -1
@@ -477,7 +476,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
             var appendLogsRequest = new AppendEntriesRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 2,
                 CommitIndex = -1,
                 PrevLogIndex = -1,
@@ -490,7 +489,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             };
             var voteRequest = new VoteRequest
             {
-                CandidateId = _otherServer1.Object.Id,
+                CandidateId = _remoteServer1Id,
                 Term = 2,
                 LastLogIndex = 2,
                 LastLogTerm = 1
@@ -514,7 +513,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new VoteRequest
             {
-                CandidateId = _otherServer1.Object.Id,
+                CandidateId = _remoteServer1Id,
                 Term = 1,
                 LastLogIndex = -1,
                 LastLogTerm = -1
@@ -541,7 +540,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(2);
             var request = new HeartbeatRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 1
             };
 
@@ -560,7 +559,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new HeartbeatRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 2
             };
 
@@ -583,7 +582,7 @@ namespace ConsensusAlgorithm.UnitTests.Services
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(1);
             var request = new HeartbeatRequest
             {
-                LeaderId = _otherServer1.Object.Id,
+                LeaderId = _remoteServer1Id,
                 Term = 1
             };
 
@@ -665,12 +664,14 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             const int currentTerm = 1;
+            var anyRequest = It.IsAny<VoteRequest>();
+
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            var voteForResponse = new VoteResponse { VoteGranted = true, Term = currentTerm + 1 };
-            var voteAgainstResponse = new VoteResponse { VoteGranted = false, Term = currentTerm + 1 };
-            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteForResponse);
-            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteForResponse);
-            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteAgainstResponse);
+            var voteFor = new VoteResponse { VoteGranted = true, Term = currentTerm + 1 };
+            var voteAgainst = new VoteResponse { VoteGranted = false, Term = currentTerm + 1 };
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer1Id, anyRequest, null)).ReturnsAsync(voteFor);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer2Id, anyRequest, null)).ReturnsAsync(voteFor);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer3Id, anyRequest, null)).ReturnsAsync(voteAgainst);
             _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
 
             // Act
@@ -688,11 +689,13 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             const int currentTerm = 1;
+            var anyRequest = It.IsAny<VoteRequest>();
+
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            var voteResponse = new VoteResponse { VoteGranted = false, Term = currentTerm + 1 };
-            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
-            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
-            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+            var voteAgainst = new VoteResponse { VoteGranted = false, Term = currentTerm + 1 };
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer1Id, anyRequest, null)).ReturnsAsync(voteAgainst);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer2Id, anyRequest, null)).ReturnsAsync(voteAgainst);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer3Id, anyRequest, null)).ReturnsAsync(voteAgainst);
 
             // Act
             ((ConsensusService)_service).RunElectionAsync(default);
@@ -711,10 +714,10 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Arrange
             const int currentTerm = 1;
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            var voteResponse = new VoteResponse { VoteGranted = false, Term = currentTerm + 2 };
-            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
-            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
-            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
+            var voteAgainst = new VoteResponse { VoteGranted = false, Term = currentTerm + 2 };
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer1Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync(voteAgainst);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer2Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync(voteAgainst);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer3Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync(voteAgainst);
 
             // Act
             ((ConsensusService)_service).RunElectionAsync(default);
@@ -732,13 +735,13 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             const int currentTerm = 1;
+            var voteAgainst1 = new VoteResponse { VoteGranted = false, Term = currentTerm + 2 };
+            var voteAgainst2 = new VoteResponse { VoteGranted = false, Term = currentTerm + 5 };
+            var voteAgainst3 = new VoteResponse { VoteGranted = false, Term = currentTerm + 1 };
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>()))
-                .ReturnsAsync(new VoteResponse { VoteGranted = false, Term = currentTerm + 2 });
-            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>()))
-                .ReturnsAsync(new VoteResponse { VoteGranted = false, Term = currentTerm + 5 });
-            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>()))
-                .ReturnsAsync(new VoteResponse { VoteGranted = false, Term = currentTerm + 1 });
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer1Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync(voteAgainst1);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer2Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync(voteAgainst2);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer3Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync(voteAgainst3);
 
             // Act
             ((ConsensusService)_service).RunElectionAsync(default);
@@ -756,11 +759,11 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             const int currentTerm = 1;
+            var voteFor = new VoteResponse { VoteGranted = true, Term = currentTerm + 1 };
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            var voteResponse = new VoteResponse { VoteGranted = true, Term = currentTerm + 1 };
-            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync(voteResponse);
-            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
-            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer1Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync(voteFor);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer2Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync((VoteResponse)null!);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer3Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync((VoteResponse)null!);
             _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
 
             // Act
@@ -779,9 +782,9 @@ namespace ConsensusAlgorithm.UnitTests.Services
             // Arrange
             const int currentTerm = 1;
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            _otherServer1.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
-            _otherServer2.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
-            _otherServer3.Setup(s => s.RequestVoteAsync(It.IsAny<VoteRequest>())).ReturnsAsync((VoteResponse)null!);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer1Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync((VoteResponse)null!);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer2Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync((VoteResponse)null!);
+            _apiClient.Setup(s => s.RequestVoteAsync(_remoteServer3Id, It.IsAny<VoteRequest>(), null)).ReturnsAsync((VoteResponse)null!);
             _statusMock.SetupProperty(s => s.State, ServerStatus.Candidate);
 
             // Act
@@ -800,14 +803,11 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             const int currentTerm = 5;
+            var successResponse = new HeartbeatResponse { Success = true, Term = currentTerm };
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm });
-            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm });
-            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm });
-
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer1Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(successResponse);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer2Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(successResponse);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer3Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(successResponse);
 
             // Act
             ((ConsensusService)_service).SendHeartbeatAsync(null);
@@ -822,13 +822,13 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             const int currentTerm = 5;
+            var successResponse1 = new HeartbeatResponse { Success = true, Term = currentTerm + 1 };
+            var successResponse2 = new HeartbeatResponse { Success = true, Term = currentTerm + 3 };
+            var successResponse3 = new HeartbeatResponse { Success = true, Term = currentTerm + 2 };
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm + 1 });
-            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm + 3 });
-            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = true, Term = currentTerm + 2 });
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer1Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(successResponse1);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer2Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(successResponse2);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer3Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(successResponse3);
 
             // Act
             ((ConsensusService)_service).SendHeartbeatAsync(null);
@@ -845,13 +845,11 @@ namespace ConsensusAlgorithm.UnitTests.Services
         {
             // Arrange
             const int currentTerm = 5;
+            var unsuccessResponse = new HeartbeatResponse { Success = false };
             _repoMock.Setup(r => r.GetCurrentTerm()).Returns(currentTerm);
-            _otherServer1.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = false });
-            _otherServer2.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = false });
-            _otherServer3.Setup(s => s.SendHeartbeatAsync(It.IsAny<HeartbeatRequest>()))
-                .ReturnsAsync(new HeartbeatResponse { Success = false });
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer1Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(unsuccessResponse);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer2Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(unsuccessResponse);
+            _apiClient.Setup(s => s.SendHeartbeatAsync(_remoteServer3Id, It.IsAny<HeartbeatRequest>(), null)).ReturnsAsync(unsuccessResponse);
 
             // Act
             ((ConsensusService)_service).SendHeartbeatAsync(null);
