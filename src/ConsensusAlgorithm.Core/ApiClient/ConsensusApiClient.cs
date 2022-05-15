@@ -12,11 +12,6 @@ namespace ConsensusAlgorithm.Core.ApiClient
 {
     public class ConsensusApiClient : IConsensusApiClient
     {
-        public const string RequestVoteUrl = "api/consensus/requestVote";
-        public const string AppendEntriesUrl = "api/consensus/appendEntries";
-        public const string AppendEntriesExternalUrl = "api/consensus/appendEntriesExternal";
-        public const string HeartbeatUrl = "api/consensus/heartbeat";
-
         private readonly HttpClient _client;
         private readonly Dictionary<string, string> _serverList;
         private readonly ITimerService _timerService;
@@ -35,8 +30,8 @@ namespace ConsensusAlgorithm.Core.ApiClient
             CancellationToken? cancellationToken = null)
         {
             return await PostRequest<AppendEntriesExternalRequest, AppendEntriesExternalResponse>(request,
-                    new Uri(new Uri(_serverList[serverId]), AppendEntriesExternalUrl), cancellationToken ?? CancellationToken.None)
-                ?? new () { Success = false };
+                    new Uri(new Uri(_serverList[serverId]), ConsensusApiUrlConstants.AppendEntriesExternalUrl), cancellationToken ?? CancellationToken.None)
+                ?? new() { Success = false };
         }
 
         public async Task<AppendEntriesResponse> AppendEntriesAsync(
@@ -45,8 +40,8 @@ namespace ConsensusAlgorithm.Core.ApiClient
             CancellationToken? cancellationToken = null)
         {
             return await PostRequest<AppendEntriesRequest, AppendEntriesResponse>(request,
-                    new Uri(new Uri(_serverList[serverId]), AppendEntriesUrl), cancellationToken ?? CancellationToken.None)
-                ?? new () { Success = false };
+                    new Uri(new Uri(_serverList[serverId]), ConsensusApiUrlConstants.AppendEntriesUrl), cancellationToken ?? CancellationToken.None)
+                ?? new() { Success = false };
         }
 
         public async Task<VoteResponse?> RequestVoteAsync(
@@ -55,7 +50,7 @@ namespace ConsensusAlgorithm.Core.ApiClient
             CancellationToken? cancellationToken = null)
         {
             return await PostRequest<VoteRequest, VoteResponse>(request,
-                new Uri(new Uri(_serverList[serverId]), RequestVoteUrl), cancellationToken ?? CancellationToken.None);
+                new Uri(new Uri(_serverList[serverId]), ConsensusApiUrlConstants.RequestVoteUrl), cancellationToken ?? CancellationToken.None);
         }
 
         public async Task<HeartbeatResponse> SendHeartbeatAsync(
@@ -64,8 +59,8 @@ namespace ConsensusAlgorithm.Core.ApiClient
             CancellationToken? cancellationToken = null)
         {
             return await PostRequest<HeartbeatRequest, HeartbeatResponse>(request,
-                    new Uri(new Uri(_serverList[serverId]), HeartbeatUrl), cancellationToken ?? CancellationToken.None)
-                ?? new () { Success = false };
+                    new Uri(new Uri(_serverList[serverId]), ConsensusApiUrlConstants.HeartbeatUrl), cancellationToken ?? CancellationToken.None)
+                ?? new() { Success = false };
         }
 
         private async Task<TResponse?> PostRequest<TRequest, TResponse>(
@@ -75,13 +70,17 @@ namespace ConsensusAlgorithm.Core.ApiClient
         {
             try
             {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
                 var data = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
                 _stopwatch.Restart();
                 var response = await _client.PostAsync(url, data, cancellationToken);
                 _stopwatch.Stop();
                 _timerService.SubmitBroadcastLatency(_stopwatch.ElapsedMilliseconds);
                 var responseString = await response.Content.ReadAsStringAsync(cancellationToken);
-                return JsonSerializer.Deserialize<TResponse>(responseString);
+                return JsonSerializer.Deserialize<TResponse>(responseString, options);
             }
             catch (Exception)
             {

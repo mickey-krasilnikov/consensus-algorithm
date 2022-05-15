@@ -43,8 +43,8 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// <param name="request">AppendEntriesRequest</param>
 		/// <returns>AppendEntriesResponse</returns>
 		[HttpPost("appendEntries")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AppendEntriesExternalResponse))]
-        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(AppendEntriesExternalResponse))]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AppendEntriesResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(AppendEntriesResponse))]
         public ActionResult<AppendEntriesResponse> AppendEntries(AppendEntriesRequest request)
 		{
 			var response = _consensusService.AppendEntries(request);
@@ -57,7 +57,7 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// <param name="request">Request Vote Request</param>
 		/// <returns>Request Vote Response</returns>
 		[HttpPost("requestVote")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AppendEntriesExternalResponse))]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(VoteResponse))]
         [ProducesDefaultResponseType]
         public ActionResult<VoteResponse> RequestVote(VoteRequest request)
 		{
@@ -69,8 +69,8 @@ namespace ConsensusAlgorithm.WebAPI.Controllers
 		/// Heartbeat endpoint
 		/// </summary>
 		[HttpPost("heartbeat")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AppendEntriesExternalResponse))]
-        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(AppendEntriesExternalResponse))]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(HeartbeatResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(HeartbeatResponse))]
         public ActionResult<HeartbeatResponse> SendHeartbeat(HeartbeatRequest request)
 		{
 			var response = _consensusService.Heartbeat(request);

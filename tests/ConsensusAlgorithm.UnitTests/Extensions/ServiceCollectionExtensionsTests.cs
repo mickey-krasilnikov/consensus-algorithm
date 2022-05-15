@@ -22,6 +22,7 @@ namespace ConsensusAlgorithm.UnitTests.Extensions
 
             //Act
             configurationManager.AddJsonFile("appsettings.json", true, reloadOnChange: true);
+            configurationManager.AddJsonFile("appsettings.Development.json", true, reloadOnChange: true);
             serviceCollection.AddSingleton(loggerMock.Object);
             serviceCollection.AddConsensusRelatedServices(configurationManager);
             var serviceProvider = serviceCollection.BuildServiceProvider();

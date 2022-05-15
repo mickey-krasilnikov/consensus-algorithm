@@ -8,6 +8,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Content Include="..\..\src\ConsensusAlgorithm.WebAPI\appsettings.Development.json" Link="appsettings.Development.json">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
 	  <Content Include="..\..\src\ConsensusAlgorithm.WebAPI\appsettings.json" Link="appsettings.json">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </Content>
